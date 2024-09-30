@@ -50,8 +50,17 @@ void xSeqPNG::destroy()
 
 }
 xSeqBase::tResult xSeqPNG::xBackendOpen(tCSR FileName, eMode /*OpMode*/)
-{
+{  
+  if(fmt::format(FileName, 0) == FileName) //file does not contain any format field
+  {
+    m_NumOfFrames  = 1;
+    m_CurrFrameIdx = 0;
+    m_FrameFiles.emplace_back(FileName);
+    return eRetv::Success;
+  }
+
   int32 StartFrame = NOT_VALID;
+
   for(int32 i = 0; i <= 1; i++)
   {
     std::string FileNameI = fmt::format(FileName, i);

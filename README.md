@@ -172,7 +172,7 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-nth | NumberOfThreads  | Number of worker threads (optional, default=-2, suggested ~8 for IVPSNR, all physical cores for SSIM) [-1 = all available threads, -2 = reasonable auto]
+|-nth | NumberOfThreads  | Number of worker threads (optional, default=-2, suggested ~8 for IVPSNR, all physical cores for SSIM) [0 = thread pool disabled, -1 = all available threads, -2 = reasonable auto]
 |-ilp | InterleavedPic   | Use additional image buffer with interleaved layout for IV-PSNR, (improves performance at a cost of increased memory usage, optional, default=1) |
 |-v   | VerboseLevel     | Verbose level (optional, default=1) |
 
@@ -185,7 +185,7 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 #### Dynamic dispatcher parameters
 | Cmd                | Description |
 |:-------------------|:------------|
-| --DispatchForceMFL | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]
+| --DispatchForceMFL | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]. Forcing a selection of microarchitecture level not supported by CPU will lead to "illegal instruction" exception.
 | --DispatchVerbose  | Verbose level for runtime dispatch module (optional, default=0) |
 
 ### 5.2. Verbose level
@@ -335,6 +335,10 @@ Examples:
 
 ## 6. Changelog
 
+### QMIV v1.0.1
+
+* bugfix
+
 ### QMIV v1.0 [N0535]
 
 * first release of QMIV framework which is descendant of previously developed IV-PSNR software v6.0
@@ -440,6 +444,8 @@ Examples:
 * fixed GCD values rounding and clipping
 
 ### IV-PSNR v1.0 [M45093]
+
+* first IV-PSNR release
 
 ## 7. References
 

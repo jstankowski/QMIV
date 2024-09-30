@@ -1,4 +1,4 @@
-set(SRCLIST_COMMON_H src/xCommonDefCore.h src/xMiscUtilsCORE.h  )
+set(SRCLIST_COMMON_H src/xCommonDefCORE.h src/xMiscUtilsCORE.h  )
 set(SRCLIST_COMMON_C                      src/xMiscUtilsCORE.cpp)
 
 set(SRCLIST_DIST_H src/xDistortion.h src/xDistortionSTD.h   src/xDistortionSSE.h   src/xDistortionAVX.h   src/xDistortionAVX512.h  )
