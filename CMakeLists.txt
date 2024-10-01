@@ -47,27 +47,6 @@ set(CMAKE_CXX_EXTENSIONS        OFF)
 # compile everything position independent (even static libraries)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE )
 
-# set gcc tools
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  #message(STATUS "CMAKE_CXX_COMPILER_VERSION = ${CMAKE_CXX_COMPILER_VERSION}")
-  string(REGEX REPLACE "^([0-9]+)\.[0-9]+\.[0-9]+$" "\\1" GCC_VERSION_MAJOR ${CMAKE_CXX_COMPILER_VERSION})
-  SET (CMAKE_AR      "/usr/bin/gcc-ar-${GCC_VERSION_MAJOR}")
-  #set(CMAKE_STATIC_LINKER_FLAGS "rcsT")
-  #SET(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> rcsT <TARGET> <LINK_FLAGS> <OBJECTS>")
-  #SET(CMAKE_CXX_ARCHIVE_FINISH   true)
-endif()
-
-# set clang tools
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  #message(STATUS "CMAKE_CXX_COMPILER_VERSION = ${CMAKE_CXX_COMPILER_VERSION}")
-  string(REGEX REPLACE "^([0-9]+)\.[0-9]+\.[0-9]+$" "\\1" CLANG_VERSION_MAJOR ${CMAKE_CXX_COMPILER_VERSION})
-  SET (CMAKE_AR      "/usr/bin/llvm-ar-${CLANG_VERSION_MAJOR}")
-  SET (CMAKE_LINKER  "/usr/bin/clang++-${CLANG_VERSION_MAJOR}")
-  SET (CMAKE_NM      "/usr/bin/llvm-nm-${CLANG_VERSION_MAJOR}")
-  SET (CMAKE_OBJDUMP "/usr/bin/llvm-objdump-${CLANG_VERSION_MAJOR}")
-  SET (CMAKE_RANLIB  "/usr/bin/llvm-ranlib-${CLANG_VERSION_MAJOR}")
-endif()
-
 # set lto
 include(CheckIPOSupported)
 check_ipo_supported(RESULT lto_is_supported OUTPUT output)
