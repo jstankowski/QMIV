@@ -48,9 +48,9 @@ using v512U8  = __v64qu;
 #endif //(defined(__clang__) || defined(__GNUC__)) && !defined(NDEBUG)
 
 //===============================================================================================================================================================================================================
-// _mm512_setr_epi16 is missing in GCC
+// _mm512_setr_epi16 is missing in GCC & CLANG
 //===============================================================================================================================================================================================================
-#if defined(__GNUC__) && X_SIMD_CAN_USE_AVX512
+#if (defined(__GNUC__) || defined(__clang__)) && X_SIMD_CAN_USE_AVX512
 static inline __m512i _mm512_setr_epi16(short  e0, short  e1, short  e2, short  e3, short  e4, short  e5, short  e6, short e7,
                                         short  e8, short  e9, short e10, short e11, short e12, short e13, short e14, short e15,
                                         short e16, short e17, short e18, short e19, short e20, short e21, short e22, short e23,
@@ -61,14 +61,17 @@ static inline __m512i _mm512_setr_epi16(short  e0, short  e1, short  e2, short  
                           e15,  e14,  e13,  e12,  e11,  e10,   e9,   e8,
                            e7,   e6,   e5,   e4,   e3,   e2,   e1,   e0);
 }
-
+#endif
+//===============================================================================================================================================================================================================
+// _mm512_setr_epi32 is missing in GCC
+//===============================================================================================================================================================================================================
+#if defined(__GNUC__) && !defined(__clang__) && X_SIMD_CAN_USE_AVX512
 static inline __m512i _mm512_setr_epi32(short  e0, short  e1, short  e2, short  e3, short  e4, short  e5, short  e6, short e7,
                                         short  e8, short  e9, short e10, short e11, short e12, short e13, short e14, short e15)
 {
   return _mm512_set_epi32(e15,  e14,  e13,  e12,  e11,  e10,   e9,   e8,
                            e7,   e6,   e5,   e4,   e3,   e2,   e1,   e0);
 }
-
 #endif
 
 //===============================================================================================================================================================================================================
@@ -204,7 +207,7 @@ static inline uint16 _mm256_hmax_epu16(__m256i Src_U16_V) //horizontal max
 static inline uint32 _mm256_hmax_epu32(__m256i Src_U32_V) //horizontal max
 {
   __m128i Max_U32_V = _mm256_lmax_epu32(Src_U32_V);
-  uint16 Max = _mm_hmax_epu32(Max_U32_V);
+  uint32 Max = _mm_hmax_epu32(Max_U32_V);
   return Max;
 }
 #endif //X_SIMD_CAN_USE_AVX
@@ -225,10 +228,10 @@ static inline uint16 _mm512_hmax_epu16(__m512i Src_U16_V) //horizontal max
   uint16 Max = _mm256_hmax_epu16(Max_U16_V);
   return Max;
 }
-static inline uint16 _mm512_hmax_epu32(__m512i Src_U32_V) //horizontal max
+static inline uint32 _mm512_hmax_epu32(__m512i Src_U32_V) //horizontal max
 {
   __m256i Max_U32_V = _mm256_max_epu32(_mm512_castsi512_si256(Src_U32_V), _mm512_extracti64x4_epi64(Src_U32_V, 1));
-  uint16 Max = _mm256_hmax_epu32(Max_U32_V);
+  uint32 Max = _mm256_hmax_epu32(Max_U32_V);
   return Max;
 }
 

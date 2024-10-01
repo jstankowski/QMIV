@@ -38,7 +38,7 @@ static constexpr uint32_t c_RegECX = 2;
 static constexpr uint32_t c_RegEDX = 3;
 static constexpr uint32_t c_RegNUM = 4;
 
-void xCPUID(uint32_t RegistersTable[4], uint32_t Leaf, uint32_t SubLeaf=0)
+void xCPUID(uint32_t RegistersTable[c_RegNUM], uint32_t Leaf, uint32_t SubLeaf=0)
 {
 #if defined(__GNUC__) || defined(__clang__)
   __get_cpuid_count(Leaf, SubLeaf, RegistersTable + c_RegEAX, RegistersTable + c_RegEBX, RegistersTable + c_RegECX, RegistersTable + c_RegEDX);
@@ -298,7 +298,7 @@ void xProcInfo::xDetectExts()
 {
   //http://www.sandpile.org/x86/cpuid.htm
   //StandardLevel = 0
-  uint32_t CPUInfo[4]; //[0]=EAX, [1]=EBX, [2]=ECX, [3]=EDX  
+  uint32_t CPUInfo[c_RegNUM]; //[0]=EAX, [1]=EBX, [2]=ECX, [3]=EDX  
   xCPUID(CPUInfo, 0);
   uint32_t HighestFunctionSupported = CPUInfo[0];
   memcpy(m_VendorID, &CPUInfo[1], 3*sizeof(int32_t));
@@ -320,7 +320,7 @@ xProcInfo::xExts xProcInfo::xDetectProcExts(uint32_t HighestFunctionSupported)
   xExts Exts;
 
   // http://www.sandpile.org/x86/cpuid.htm
-  uint32_t CPUInfo[4] = { 0 }; //[0] =EAX, [1]=EBX, [2]=ECX, [3]=EDX  
+  uint32_t CPUInfo[c_RegNUM] = { 0 }; //[0] =EAX, [1]=EBX, [2]=ECX, [3]=EDX  
 
   //StandardLevel = 1
   if(HighestFunctionSupported>=1)
@@ -480,8 +480,8 @@ xProcInfo::xExts xProcInfo::xDetectProcExts(uint32_t HighestFunctionSupported)
 
   //derrived
   Exts.setExt(eExt::LZCNT       , Exts.hasExt(eExt::BMI1));
-  Exts.setExt(eExt::ABM         , Exts.hasExt(eExt::LZCNT) & Exts.hasExt(eExt::POPCNT));
-  Exts.setExt(eExt::TSX         , Exts.hasExt(eExt::RTM) & Exts.hasExt(eExt::HLE));
+  Exts.setExt(eExt::ABM         , Exts.hasExt(eExt::LZCNT) && Exts.hasExt(eExt::POPCNT));
+  Exts.setExt(eExt::TSX         , Exts.hasExt(eExt::RTM  ) && Exts.hasExt(eExt::HLE   ));
   
   //ExtendedStandardLevel = 0x80000000
   xCPUID(CPUInfo, 0x80000000);
