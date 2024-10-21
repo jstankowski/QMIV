@@ -26,11 +26,11 @@ The idea behind the IV-PSNR mertric, its detailed description and evaluation can
 
 ## 3. License
 
-## 3.1. TLDR
+### 3.1. TLDR
 
 3-Clause BSD License
 
-## 3.2. Full text
+### 3.2. Full text
 
 ```txt
 The copyright in this software is being made available under the BSD
@@ -335,9 +335,9 @@ Examples:
 
 ## 6. Changelog
 
-### QMIV v1.0.1
+### QMIV v1.0.1 & v1.0.2
 
-* bugfix
+* bugfix releases
 
 ### QMIV v1.0 [N0535]
 
