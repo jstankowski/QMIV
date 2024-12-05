@@ -3,7 +3,7 @@
     SPDX-License-Identifier: BSD-3-Clause
 */
 #pragma once
-#include "xCommonDefPMBB-BASE.h"
+#include "xCommonDefBASE.h"
 
 //===============================================================================================================================================================================================================
 // base includes
@@ -170,6 +170,7 @@ static inline uint64 xFastLog2(uint64 Value) { return 63 - __builtin_clzll(Value
 #else
 #error Unrecognized compiler
 #endif
+static inline bool   xIsPowerOf2(uint32 Value) { return Value == (uint32)1 << xFastLog2(Value); }
 
 //=============================================================================================================================================================================
 // Leading zero count
@@ -247,33 +248,8 @@ static inline  int64 xSwapBytes64( int64 Value) { return __builtin_bswap64(Value
 //===============================================================================================================================================================================================================
 // type safe memset & memcpy
 //===============================================================================================================================================================================================================
-template <class XXX> static inline void xMemsetX(XXX* Dst, const XXX  Val, uint32 Count) { if constexpr(sizeof(XXX) == 1) { std::memset(Dst, Val, Count); } else { for(uint32 i = 0; i < Count; i++) Dst[i] = Val; } }
+template <class XXX> static inline void xMemsetX(XXX* Dst, const XXX  Val, uint32 Count) { if constexpr(sizeof(XXX) == 1 && std::is_integral_v<XXX>) { std::memset(Dst, Val, Count); } else { for(uint32 i = 0; i < Count; i++) Dst[i] = Val; } }
 template <class XXX> static inline void xMemcpyX(XXX* Dst, const XXX* Src, uint32 Count) { std::memcpy(Dst, Src, Count*sizeof(XXX)); }
-
-//===============================================================================================================================================================================================================
-// Time is money
-//===============================================================================================================================================================================================================
-using tClock      = std::chrono::high_resolution_clock       ;
-using tTimePoint  = tClock::time_point                       ;
-using tDuration   = tClock::duration                         ;
-using tDurationUS = std::chrono::duration<double, std::micro>;
-using tDurationMS = std::chrono::duration<double, std::milli>;
-using tDurationS  = std::chrono::duration<double            >;
-
-// Time Stamp Counter
-#if (X_ARCHITECTURE_AMD64)
-  #define NoBarierRDTSC 0
-  #if NoBarierRDTSC
-    static inline uint64 xTSC() { return __rdtsc(); }
-    #define X_TSC_IMPLEMENTATION "RDTSC"
-  #else
-    static inline uint64 xTSC() { uint32 T;  return __rdtscp(&T); }
-    #define X_TSC_IMPLEMENTATION "RDTSCP"
-  #endif
-#else
-  static inline uint64 xTSC() { return (uint64)(tClock::now().time_since_epoch().count()); }
-  #define X_TSC_IMPLEMENTATION "std::chrono::high_resolution_clock"
-#endif
 
 //===============================================================================================================================================================================================================
 // Math constants
@@ -346,11 +322,12 @@ enum class eImgTp : int8 //Image Type
   INVALID = NOT_VALID,
   UNKNOWN = 0,
   YCbCr,   //YUV  (YCbCr, YCoCg, ...)
-  YCbCrA,  //YUV+A(alpha)
-  YCbCrD,  //YUV+D(depth)
+//YCbCrA,  //YUV+A(alpha)
+//YCbCrD,  //YUV+D(depth)
   RGB,     //RGB
   BGR,     //BGR
-  Bayer,   //M - bayer
+  GBR,     //GBR
+//Bayer,   //M - bayer
 };
 
 enum class eClrSpcLC : int32 //colorspaces using luma and chromas
@@ -359,6 +336,7 @@ enum class eClrSpcLC : int32 //colorspaces using luma and chromas
   //standardized YCbCr
   BT601     = 0,
   SMPTE170M = 0,
+  JPEG      = 0,
   BT709     = 1,
   SMPTE240M = 2,
   BT2020    = 3,
@@ -369,6 +347,17 @@ enum class eClrSpcLC : int32 //colorspaces using luma and chromas
   YCoCgR    = 6,
 };
 
+enum class eMrgExt : int32 //picture margin extension mode // trying to be consistent with numpy.pad and scipy.ndimage.generic_filter
+{
+  INVALID   = -1,
+  None      = 0,
+  Edge      = 1, Nearest = 1, //( a a a a | a b c d | d d d d ) //numpy-edge     , scipy-nearest   
+  Symmetric = 2,              //( d c b a | a b c d | d c b a ) //numpy-symmetric, scipy-reflect
+  Reflect   = 3,              //(   d c b | a b c d | c b a   ) //numpy-reflect  , scipy-mirror
+  Constant  = 4,              //( k k k k | a b c d | k k k k )
+  Zero      = 5,              //( 0 0 0 0 | a b c d | 0 0 0 0 )
+};
+
 enum class eActn : int32
 {
   INVALID = NOT_VALID,
@@ -376,6 +365,22 @@ enum class eActn : int32
   WARN    = 1, //WARN - print warning and ignore
   STOP    = 2, //STOP - stop execution
   CNCL    = 3, //CNCL - try to conceal
+};
+
+enum class eAppRes : int32
+{
+  Unknown = -1,
+  Good        ,
+  Warning     ,
+  Error        
+};
+
+enum class eFileFmt : int32
+{
+  INVALID = -1,
+  RAW,
+  PNG,
+  BMP,
 };
 
 //===============================================================================================================================================================================================================

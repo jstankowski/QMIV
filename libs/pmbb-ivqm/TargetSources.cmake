@@ -15,8 +15,8 @@ set(SRCLIST_CPS_C src/xCorrespPixelShift.cpp src/xCorrespPixelShiftSTD.cpp src/x
 set(SRCLIST_IVPSNR_H src/xPSNR.h   src/xWSPSNR.h   src/xIVPSNR.h   )
 set(SRCLIST_IVPSNR_C src/xPSNR.cpp src/xWSPSNR.cpp src/xIVPSNR.cpp )
 
-set(SRCLIST_IVSSIM_H src/xStructSimConsts.h src/xStructSim.h   src/xSSIM.h   )
-set(SRCLIST_IVSSIM_C                        src/xStructSim.cpp src/xSSIM.cpp )
+set(SRCLIST_IVSSIM_H src/xStructSimConsts.h src/xStructSim.h   src/xStructSimSTD.h   src/xStructSimSSE.h   src/xStructSimAVX.h   src/xStructSimAVX512.h   src/xSSIM.h  )
+set(SRCLIST_IVSSIM_C                                           src/xStructSimSTD.cpp src/xStructSimSSE.cpp src/xStructSimAVX.cpp src/xStructSimAVX512.cpp src/xSSIM.cpp)
 
 
 

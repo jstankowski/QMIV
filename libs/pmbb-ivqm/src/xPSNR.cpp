@@ -21,13 +21,13 @@ flt64V4 xPSNR::calcPicPSNR(const xPicP* Tst, const xPicP* Ref)
 
   flt64V4 PSNR = xMakeVec4(flt64_max );
   
-  if(m_ThPI.isActive())
+  if(m_ThPI->isActive())
   {
     for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
     {
-      m_ThPI.addWaitingTask([this, &PSNR, &Tst, &Ref, CmpIdx](int32 /**/) { PSNR[CmpIdx] = xCalcCmpPSNR(Tst, Ref, (eCmp)CmpIdx); });
+      m_ThPI->addWaitingTask([this, &PSNR, &Tst, &Ref, CmpIdx](int32 /**/) { PSNR[CmpIdx] = xCalcCmpPSNR(Tst, Ref, (eCmp)CmpIdx); });
     }
-    m_ThPI.waitUntilTasksFinished(m_NumComponents);
+    m_ThPI->waitUntilTasksFinished(m_NumComponents);
   }
   else
   {
@@ -49,13 +49,13 @@ flt64V4 xPSNR::calcPicPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk
 
   flt64V4 PSNR = xMakeVec4(flt64_max);
 
-  if(m_ThPI.isActive())
+  if(m_ThPI->isActive())
   {
     for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
     {
-      m_ThPI.addWaitingTask([this, &PSNR, Tst, Ref, Msk, NumNonMasked, CmpIdx](int32 /*ThreadIdx*/) { PSNR[CmpIdx] = xCalcCmpPSNRM(Tst, Ref, Msk, NumNonMasked, (eCmp)CmpIdx); });
+      m_ThPI->addWaitingTask([this, &PSNR, Tst, Ref, Msk, NumNonMasked, CmpIdx](int32 /*ThreadIdx*/) { PSNR[CmpIdx] = xCalcCmpPSNRM(Tst, Ref, Msk, NumNonMasked, (eCmp)CmpIdx); });
     }
-    m_ThPI.waitUntilTasksFinished(m_NumComponents);
+    m_ThPI->waitUntilTasksFinished(m_NumComponents);
   }
   else
   {

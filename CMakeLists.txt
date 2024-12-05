@@ -142,6 +142,7 @@ message(STATUS "CMAKE_CXX_COMPILER_VERSION = ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "CMAKE_NM                   = ${CMAKE_NM}")
 message(STATUS "CMAKE_AR                   = ${CMAKE_AR}")
 message(STATUS "CMAKE_LINKER               = ${CMAKE_LINKER}")
+message(STATUS "CMAKE_C_FLAGS              = ${CMAKE_C_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS            = ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_STATIC_LINKER_FLAGS  = ${CMAKE_STATIC_LINKER_FLAGS}")
 
@@ -173,7 +174,7 @@ add_subdirectory(thirdparty/spng    thirdparty-spng)
 add_subdirectory(libs/pmbb-base    libpmbb-base)
 add_subdirectory(libs/pmbb-core    libpmbb-core)
 add_subdirectory(libs/pmbb-ivqm    libpmbb-ivqm)
-add_subdirectory(libs/pmbb-spng    libpmbb-spng)
+add_subdirectory(libs/pmbb-slst    libpmbb-slst)
 #=========================================================================================================================================
 # apps
 #=========================================================================================================================================

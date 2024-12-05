@@ -25,6 +25,9 @@ std::string xClrSpcLC2Str(eClrSpcLC ClrSpc);
 eActn       xStr2Actn(const std::string& Actn);
 std::string xActn2Str(eActn IPA);
 
+eFileFmt    xStr2FileFmt(const std::string& FileFmt);
+std::string xFileFmt2Str(eFileFmt FileFmt);
+
 //===============================================================================================================================================================================================================
 
 class xMiscUtilsCORE

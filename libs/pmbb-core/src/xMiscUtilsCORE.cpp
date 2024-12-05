@@ -4,6 +4,7 @@
 */
 
 #include "xMiscUtilsCORE.h"
+#include "xTimeUtils.h"
 
 namespace PMBB_NAMESPACE {
 
@@ -32,22 +33,24 @@ eImgTp xStr2ImgTp(const std::string& ImgTp)
 {
   std::string ImgTpU = xString::toUpper(ImgTp);
   return ImgTpU=="YCbCr"  ? eImgTp::YCbCr  :
-         ImgTpU=="YCbCrA" ? eImgTp::YCbCrA :
-         ImgTpU=="YCbCrD" ? eImgTp::YCbCrD :
+       //ImgTpU=="YCbCrA" ? eImgTp::YCbCrA :
+       //ImgTpU=="YCbCrD" ? eImgTp::YCbCrD :
          ImgTpU=="RGB"    ? eImgTp::RGB    :
          ImgTpU=="BGR"    ? eImgTp::BGR    :
-         ImgTpU=="Bayer"  ? eImgTp::Bayer  :
+         ImgTpU=="GBR"    ? eImgTp::GBR    :
+       //ImgTpU=="Bayer"  ? eImgTp::Bayer  :
                             eImgTp::INVALID;
 }
 std::string xImgTp2Str(eImgTp ImgTp)
 {
   return ImgTp==eImgTp::YCbCr   ? "YCbCr"  :
-         ImgTp==eImgTp::YCbCrA  ? "YCbCrA" :
-         ImgTp==eImgTp::YCbCrD  ? "YCbCrD" :
+       //ImgTp==eImgTp::YCbCrA  ? "YCbCrA" :
+       //ImgTp==eImgTp::YCbCrD  ? "YCbCrD" :
          ImgTp==eImgTp::RGB     ? "RGB"    :
          ImgTp==eImgTp::BGR     ? "BGR"    :
-         ImgTp==eImgTp::Bayer   ? "Bayer"  :
-         ImgTp==eImgTp::UNKNOWN ? "UNKNOWN":
+         ImgTp==eImgTp::GBR     ? "GBR"    :
+       //ImgTp==eImgTp::Bayer   ? "Bayer"  :
+       //ImgTp==eImgTp::UNKNOWN ? "UNKNOWN":
                                   "INVALID";
 }
 eClrSpcLC xStr2ClrSpcLC(const std::string& ClrSpc)
@@ -91,6 +94,22 @@ std::string xActn2Str(eActn IPA)
          IPA == eActn::STOP ? "STOP" :
          IPA == eActn::CNCL ? "CNCL" :
                               "INVALID";
+}
+
+eFileFmt xStr2FileFmt(const std::string& FileFmt)
+{
+  std::string FileFmtU = xString::toUpper(FileFmt);
+  return FileFmt=="RAW" ? eFileFmt::RAW    :
+         FileFmt=="PNG" ? eFileFmt::PNG    :
+         FileFmt=="BMP" ? eFileFmt::BMP    :
+                          eFileFmt::INVALID;
+}
+std::string xFileFmt2Str(eFileFmt FileFmt)
+{
+  return FileFmt==eFileFmt::RAW ? "RAW"    :
+         FileFmt==eFileFmt::PNG ? "PNG"    :
+         FileFmt==eFileFmt::BMP ? "BMP"    :
+                                  "INVALID";
 }
 
 //===============================================================================================================================================================================================================

@@ -19,9 +19,9 @@ bool xSeqBase::isModeAllowed(eMode OpMode)
 {
   switch(OpMode)
   {
-    case eMode::Read  : return allowsRead (); break;
-    case eMode::Write : return allowsWrite(); break;
-    case eMode::Append: return allowsRead (); break;
+    case eMode::Read  : return allowsRead  (); break;
+    case eMode::Write : return allowsWrite (); break;
+    case eMode::Append: return allowsAppend(); break;
     default: return false;
   }
 }
@@ -72,6 +72,7 @@ xSeqBase::tResult xSeqBase::writeFrame(const xPicP* Pic)
 
   return eRetv::Success;
 }
+#if X_PMBB_SEQ_HAS_PLANE
 xSeqBase::tResult xSeqBase::readFrame(xPlane<uint8>* Plane)
 {
   if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
@@ -144,6 +145,47 @@ xSeqBase::tResult xSeqBase::writeFrame(const xPlane<uint16>* Plane)
 
   return eRetv::Success;
 }
+#endif //X_PMBB_SEQ_HAS_PLANE
+#if X_PMBB_SEQ_HAS_PICYUV
+xSeqBase::tResult xSeqBase::readFrame(xPicYUV* Pic)
+{
+  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
+  if(m_OpMode != eMode::Read) { return eRetv::Error; }
+  if(!Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat)) { return eRetv::WrongArg; }
+
+  //read frame
+  tResult Result = xBackendRead(m_Packed);
+  if(!Result) { return Result; }
+
+  //unpack frame
+  bool Unpacked = xUnpackFrame(Pic);
+  if(!Unpacked) { return eRetv::Error; }
+
+  //update state
+  m_CurrFrameIdx += 1;
+
+  return eRetv::Success;
+}
+xSeqBase::tResult xSeqBase::writeFrame(const xPicYUV* Pic)
+{
+  if(m_OpMode != eMode::Write && m_OpMode != eMode::Append) { return eRetv::Error; }
+  if(!Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat)) { return eRetv::WrongArg; }
+
+  //pack frame
+  bool Packed = xPackFrame(Pic);
+  if(!Packed) { return eRetv::Error; }
+
+  //write frame
+  tResult Result = xBackendWrite(m_Packed);
+  if(!Result) { return Result; }
+
+  //update state
+  m_NumOfFrames  += 1;
+  m_CurrFrameIdx += 1;
+
+  return eRetv::Success;
+}
+#endif //X_PMBB_SEQ_HAS_PICYUV
 xSeqBase::tResult xSeqBase::seekFrame(int32 FrameNumber)
 {
   if(m_OpMode == eMode::Read && FrameNumber >= m_NumOfFrames) { return eRetv::WrongArg; }
@@ -317,6 +359,7 @@ bool xSeqBase::xPackFrame(const xPicP* Pic)
   }
   return true;
 }
+#if X_PMBB_SEQ_HAS_PLANE
 bool xSeqBase::xUnpackFrame(xPlane<uint8>* Pic)
 {
   uint8*      PtrLm  = Pic->getAddr  ();
@@ -402,6 +445,51 @@ bool xSeqBase::xPackFrame(const xPlane<uint16>* Pic)
 
   return true;
 }
+#endif //X_PMBB_SEQ_HAS_PLANE
+#if X_PMBB_SEQ_HAS_PICYUV
+bool xSeqBase::xUnpackFrame(xPicYUV* Pic)
+{
+  bool IsCompatible = Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat);
+  assert(IsCompatible); if(!IsCompatible) { return false; }
+
+  const uint8* SrcPtr  = m_Packed;
+  int32        NumCmps = Pic->getNumCmps();
+  for(int32 c = 0; c < NumCmps; c++)
+  {
+    uint16* DstPtr     = Pic->getAddr  ((eCmp)c);
+    const int32 Stride = Pic->getStride((eCmp)c);
+    const int32 Width  = Pic->getWidth ((eCmp)c);
+    const int32 Height = Pic->getHeight((eCmp)c);
+    const int32 Offset = Width * Height * m_BytesPerSample;
+    if(m_BytesPerSample == 1) { xPixelOps::Cvt (DstPtr, SrcPtr           , Stride, Width, Width, Height); }
+    else                      { xPixelOps::Copy(DstPtr, (uint16*)(SrcPtr), Stride, Width, Width, Height); }
+    SrcPtr += Offset;
+  }
+
+  return true;
+}
+bool xSeqBase::xPackFrame(const xPicYUV* Pic)
+{
+  bool IsCompatible = Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat);
+  assert(IsCompatible); if(!IsCompatible) { return false; }
+
+  uint8* DstPtr  = m_Packed;
+  int32  NumCmps = Pic->getNumCmps();
+  for(int32 c = 0; c < NumCmps; c++)
+  {
+    const uint16* SrcPtr = Pic->getAddr  ((eCmp)c);
+    const int32   Stride = Pic->getStride((eCmp)c);
+    const int32   Width  = Pic->getWidth ((eCmp)c);
+    const int32   Height = Pic->getHeight((eCmp)c);
+    const int32   Offset = Width * Height * m_BytesPerSample;
+    if(m_BytesPerSample == 1) { xPixelOps::Cvt (DstPtr           , SrcPtr, Width, Stride, Width, Height); }
+    else                      { xPixelOps::Copy((uint16*)(DstPtr), SrcPtr, Width, Stride, Width, Height); }
+    DstPtr += Offset;
+  }
+
+  return true;
+}
+#endif //X_PMBB_SEQ_HAS_PICYUV
 
 //===============================================================================================================================================================================================================
 
@@ -509,7 +597,7 @@ xSeq::tResult xSeq::xBackendRead(uint8* PackedFrame)
   bool ReadOK = m_Stream->read(PackedFrame, m_PackedImgNumBytes);
   return ReadOK ? eRetv::Success : eRetv::Error;
 }
-xSeq::tResult xSeq::xBackendWrite(uint8* PackedFrame)
+xSeq::tResult xSeq::xBackendWrite(const uint8* PackedFrame)
 {
   bool WriteOK = m_Stream->write(PackedFrame, m_PackedImgNumBytes);
   if(!WriteOK) { return eRetv::Error; }

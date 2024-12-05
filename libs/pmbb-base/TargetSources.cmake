@@ -1,6 +1,6 @@
-set(SRCLIST_COMMON_H src/xCommonDefPMBB-BASE.h)
+set(SRCLIST_COMMON_H src/xCommonDefBASE.h)
 
-set(SRCLIST_UTILS_H src/xCfgINI.h src/xFile.h src/xMemory.h src/xString.h)
+set(SRCLIST_UTILS_H src/xCfgINI.h   src/xFile.h   src/xMemory.h   src/xString.h  )
 set(SRCLIST_UTILS_C src/xCfgINI.cpp src/xFile.cpp src/xMemory.cpp src/xString.cpp)
 
 set(SRCLIST_PROC_H src/xProcInfo.h  )

@@ -5,19 +5,26 @@ Quality Merics for Immersive Video
 
 ## 1. Description
 
-The QMIV framework calculates number of quality metrics, especially related to assessment of immersive video quality. The QMIV is a successor of [IV-PSNR software](./README-IVPSNR.md)
+The QMIV framework calculates number of quality metrics, especially related to assessment of immersive video quality. The QMIV is a successor of IV-PSNR software.
 
 The list of immersive video quality metrics includes: 
-  * IV-PSNR   - Immersive Video - Peak Signal-to-Noise Ratio
-  * IV-SSIM   - Immersive Video - Structural Similarity Index Measure
+  * IV-PSNR    - Immersive Video - Peak Signal-to-Noise Ratio
+  * IV-SSIM    - Immersive Video - Structural Similarity Index Measure
+  * IV-MS-SSIM - Immersive Video - Multi Scale Structural Similarity Index Measure (experimental)
 
 In addition the software is able to calculate following "general purpose" metrics:
-  * PSNR      - Peak Signal-to-Noise Ratio
-  * WS-PSNR   - Spherical Weighted - Peak Signal-to-Noise Ratio
-  * SSIM      - Structural Similarity Index Measure
+  * PSNR    - Peak Signal-to-Noise Ratio
+  * WS-PSNR - Spherical Weighted - Peak Signal-to-Noise Ratio
+  * SSIM    - Structural Similarity Index Measure
+  * MS-SSIM - Multi Scale Structural Similarity Index Measure
 
 The idea behind the IV-PSNR mertric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
 **A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**
+
+The idea behind the IV-SSIM mertric, its detailed description and evaluation can be found in the paper [IVSSIM]:  
+**A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**
+
+The QMIV software (former IV-PSNR software) and its architecture is described in following papers [IVSOFT1],[IVSOFT2].  
 
 ## 2. Authors
 
@@ -122,7 +129,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |-s1  | StartFrame1      | Start frame 1 (optional, default=0) |
 |-nf  | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
 |-r   | ResultFile       | Output file path for printing result(s) (optional) |
-|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, IVSSIM] (optional, default="PSNR, IVPSNR, IVSSIM") |
+|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, MSSSIM, IVSSIM, IVMSSSIM] (optional, default="PSNR, WSPSNR, IVPSNR, IVSSIM") |
 
 PictureSize parameter can be used interchangeably with PictureWidth, PictureHeight pair. If PictureSize parameter is present the PictureWidth and PictureHeight arguments are ignored.
 PictureFormat parameter can be used interchangeably with BitDepth, ChromaFormat pair. If PictureFormat parameter is present the BitDepth and, ChromaFormat arguments are ignored.
@@ -160,6 +167,13 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 |-cws | CmpWeightsSearch | IV-metric component weights used during search ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory, requires USE_RUNTIME_CMPWEIGHTS=1) |
 |-cwa | CmpWeightsAverage| IV-metric component weights used during averaging ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory) |
 |-unc | UnnoticeableCoef | IV-metric unnoticeable color difference threshold coeff ("Lm:Cb:Cr:0" or "R:G:B:0" - per component coeff, default="0.01:0.01:0.01:0", quotes are mandatory) |
+
+#### Structural similarity specific parameters
+| Cmd | ParamName        | Description |
+|:----|:-----------------|:------------|
+|-ssm | StructSimMode    | Calculation mode and structure variant (optional, default=BlockAveraged) [RegularGaussianFlt, RegularGaussianInt, RegularAveraged, BlockGaussianInt, BlockAveraged] |
+|-sss | StructSimStride  | Stride between pixels/windows (optional, default=4) |
+|-ssw | StructSimWindow  | Size of structure window (optional, applies to Block modes only, default=8) [8,16,32] |
 
 #### Validation parameters
 
@@ -320,9 +334,9 @@ The other path assumes on-demand colorspace conversion. The software is able to 
 
 For example, if one wants to use input sequence in BT709 colorspace and calculate metrics in RGB, the following parameters should be used: `-csi YCbCr_BT709 -csm RGB -cwa "1:1:1:0" -cws "1:1:1:0"`.
 
-### 5.9. PNG mode
+### 5.9. PNG/BMP mode
 
-Optional mode of the QMIV allows to calculate the metrics not for video files, but for lists of indexed images in the PNG format. 
+Optional mode of the QMIV allows to calculate the metrics not for video files, but for lists of indexed images in the PNG or BMP format. 
 
 The name of input file should contain format string as defined in C++20 std::format [ISO/IEC 14882:2020] in the form of `{:d}` with optional modifiers. The file name is determined by formatting input string using image index.
 
@@ -331,9 +345,27 @@ The software expects lists of consequently numbered files. The first file index 
 Examples:
 * The list of files {img001.png, img002.png, img003.png} should be specified as `img{:03d}.png`. 
 * The list of files {img000.png, img001.png, img002.png, img004.png}, specified as `img{:03d}.png`, will be processed for 0,1, and 2 indexes only. The `img002.png` will be detected as the last image in list.
+* The list of files {img001.bmp, img002.bmp, img003.bmp} should be specified as `img{:03d}.bmp`. 
 
 
 ## 6. Changelog
+
+### QMIV v2.0 [N0580]
+
+* added calculation of MS-SSIM (Multi Scale SSIM) metric and experimental IV-MS-SSIM (Immersive Video - Multi Scale SSIM),
+* added several variants of SSIM-related metrics calculation:
+  * Structural similarity mode - allows to change mode and windowing approach:
+    * RegularGaussianFlt, RegularGaussianInt, RegularAveraged - regular 11x11 mode
+    * BlockGaussianInt, BlockAveraged - block-based mode
+    * two implenetations of Gaussian window (floating point based and integer based with quantized Gaussian filter coefficients) or simplified averaging window,
+  * Structural similarity stride - allows to calculate SSIM-related metrics every N pixels
+  * Structural similarity window size - allows to provide window size for block mode SSIM
+* added new parameters: StructSimMode, StructSimStride, StructSimWindow,
+* switching default approach for SSIM-related metrics form (Mode=RegularGaussianFlt,Stride=1 - as defined by authors of SSIM metric) to (Mode=BlockAveraged,Stride=1,Window=8 - similar to approach used by FFMPEG) - this change reduces computational complexity while inceasing corellation with MOS,
+* fast SIMD (SSE4.1, AVX2, and AVX512) implementation for BlockAveraged SSIM mode,
+* added possibility to read BMP file or list of BMP files,
+* reduced thread pool overhead,
+* several small performance improvements & minor bugfixes.
 
 ### QMIV v1.0.1 & v1.0.2
 
@@ -450,6 +482,10 @@ Examples:
 ## 7. References
 
 * [IVPSNR] A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications)
+* [IVSSIM] A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-SSIM----The-Structural-Similarity-Metric-for-Immersive-Video)
+* [IVSOFT1] J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)
+* [IVSOFT2] J. Stankowski, A. Dziembowski, "Version [7.1] – [IV-PSNR: Software for immersive video objective quality evaluation]," SoftwareX, Volume 28, 2024, doi: [10.1016/j.softx.2024.101961](https://doi.org/10.1016/j.softx.2024.101961)
+* [N0580] J. Stankowski, A. Dziembowski, "Software manual of QMIV 2", ISO/IEC JTC1/SC29/WG04 MPEG VC/N0580, October 2024, Antalya, Turkey.
 * [N0535] J. Stankowski, A. Dziembowski, "Software manual of QMIV", ISO/IEC JTC1/SC29/WG04 MPEG VC/N0535, July 2024, Sapporo, Japan.
 * [M68222] J. Stankowski, A. Dziembowski, "The final version of the IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M68222, July 2024, Sapporo, Japan.
 * [M64727] J. Stankowski, A. Dziembowski, "Optimized IV-PSNR software with invalid pixel detection", ISO/IEC JTC1/SC29/WG04 MPEG VC/M64727, October 2023, Hannover, Germany.

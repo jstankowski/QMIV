@@ -9,7 +9,8 @@
 #include <random>
 
 #include "../src/xCommonDefCORE.h"
-#include "../src/xMathUtils.h"
+#include "xTimeUtils.h"
+#include "../src/xKBNS.h"
 
 using namespace PMBB_NAMESPACE;
 

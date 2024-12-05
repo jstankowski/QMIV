@@ -30,6 +30,7 @@
 #include <fmt/format.h>
 #include <fmt/printf.h>
 #include <fmt/ostream.h>
+#include <fmt/ranges.h>
 #undef FMT_USE_WINDOWS_H
 
 //=============================================================================================================================================================================
@@ -91,6 +92,32 @@
 #ifndef X_ARCHITECTURE_AMD64
 #define X_ARCHITECTURE_AMD64 0
 #endif // !X_ARCHITECTURE_AMD64
+
+//=============================================================================================================================================================================
+// language version
+//=============================================================================================================================================================================
+#if defined(_MSVC_LANG)
+#  if _MSVC_LANG < 201703
+#    error Please compile for C++17 or higher
+#  endif
+#else  // All other compilers.
+#  if __cplusplus < 201703
+#    error Please compile for C++17 or higher
+#  endif
+#endif
+
+#if defined(_MSVC_LANG)
+#  if _MSVC_LANG >= 202002L
+#    define X_PMBB_CPP20 1
+#  endif
+#else  // All other compilers.
+#  if __cplusplus >= 202002L
+#    define X_PMBB_CPP20 1
+#  endif
+#endif
+#ifndef X_PMBB_CPP20
+#  define X_PMBB_CPP20 0
+#endif // !X_PMBB_CPP20
 
 //=============================================================================================================================================================================
 // C99 restrict pointers support

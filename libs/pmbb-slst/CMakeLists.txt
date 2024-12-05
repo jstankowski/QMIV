@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 #=========================================================================================================================================
-# library PUT-Multimedia-Building-Blocks - sequence png utils
+# library PUT-Multimedia-Building-Blocks - sequence from file list
 #=========================================================================================================================================
-set(LIB_PMBB_SPNG_NAME "pmbb-spng")
-set(LIB_PMBB_SPNG_NAME "pmbb-spng" PARENT_SCOPE)
+set(LIB_PMBB_SLST_NAME "pmbb-slst")
+set(LIB_PMBB_SLST_NAME "pmbb-slst" PARENT_SCOPE)
 
 if(NOT PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES)
 
-  project(${LIB_PMBB_SPNG_NAME})
+  project(${LIB_PMBB_SLST_NAME})
   add_library(${PROJECT_NAME} OBJECT "")
   include(./TargetSources.cmake)
   target_compile_features   (${PROJECT_NAME} PRIVATE cxx_std_17)
@@ -21,7 +21,7 @@ else() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES
 
   foreach(MFL ${LIST_MFL})
     determine_compiler_settings_for_MFL(MFL_CO MFL_CD MFL_CN ${MFL})    
-    project("${LIB_PMBB_SPNG_NAME}_${MFL_CN}")
+    project("${LIB_PMBB_SLST_NAME}_${MFL_CN}")
     add_library(${PROJECT_NAME} "")
     include(./TargetSources.cmake)
     set(LIB_PMBB_CORE_NAME_MFL "${LIB_PMBB_CORE_NAME}_${MFL_CN}")    
@@ -35,11 +35,11 @@ else() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES
     target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_CORE_NAME_MFL}_SOURCE_DIR}/src)
   endforeach()
 
-  project(${LIB_PMBB_SPNG_NAME})
+  project(${LIB_PMBB_SLST_NAME})
   add_library(${PROJECT_NAME} INTERFACE)
   foreach(MFL ${LIST_MFL})
     determine_compile_name_for_MFL(MFL_CN ${MFL})
-    target_link_libraries(${PROJECT_NAME} INTERFACE ${LIB_PMBB_SPNG_NAME}_${MFL_CN} $<TARGET_OBJECTS:${LIB_PMBB_SPNG_NAME}_${MFL_CN}>)
+    target_link_libraries(${PROJECT_NAME} INTERFACE ${LIB_PMBB_SLST_NAME}_${MFL_CN} $<TARGET_OBJECTS:${LIB_PMBB_SLST_NAME}_${MFL_CN}>)
   endforeach()
   
 endif() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-BASE.h"
+#include "xCommonDefBASE.h"
 #include <vector>
 
 namespace PMBB_BASE {

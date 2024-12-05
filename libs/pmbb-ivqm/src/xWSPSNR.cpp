@@ -6,7 +6,7 @@
 #include "xWSPSNR.h"
 #include "xDistortion.h"
 #include "xPixelOps.h"
-#include "xMathUtils.h"
+#include "xKBNS.h"
 #include <cassert>
 
 namespace PMBB_NAMESPACE {
@@ -27,13 +27,13 @@ flt64V4 xWSPSNR::calcPicWSPSNR(const xPicP* Tst, const xPicP* Ref)
   }
   else
   {
-    if(m_ThPI.isActive())
+    if(m_ThPI->isActive())
     {
       for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
       {
-        m_ThPI.addWaitingTask([this, &WSPSNR, &Tst, &Ref, CmpIdx](int32 /*ThreadIdx*/) { WSPSNR[CmpIdx] = xCalcCmpWSPSNR(Tst, Ref, (eCmp)CmpIdx); });
+        m_ThPI->addWaitingTask([this, &WSPSNR, &Tst, &Ref, CmpIdx](int32 /*ThreadIdx*/) { WSPSNR[CmpIdx] = xCalcCmpWSPSNR(Tst, Ref, (eCmp)CmpIdx); });
       }
-      m_ThPI.waitUntilTasksFinished(m_NumComponents);
+      m_ThPI->waitUntilTasksFinished(m_NumComponents);
     }
     else
     {
@@ -74,13 +74,13 @@ flt64V4 xWSPSNR::calcPicWSPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP*
   }
   else
   {
-    if(m_ThPI.isActive())
+    if(m_ThPI->isActive())
     {
       for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
       {
-        m_ThPI.addWaitingTask([this, &WSPSNR, &Tst, &Ref, &Msk, &NumNonMasked, CmpIdx](int32 /*ThreadIdx*/) { WSPSNR[CmpIdx] = xCalcCmpWSPSNRM(Tst, Ref, Msk, NumNonMasked, (eCmp)CmpIdx); });
+        m_ThPI->addWaitingTask([this, &WSPSNR, &Tst, &Ref, &Msk, &NumNonMasked, CmpIdx](int32 /*ThreadIdx*/) { WSPSNR[CmpIdx] = xCalcCmpWSPSNRM(Tst, Ref, Msk, NumNonMasked, (eCmp)CmpIdx); });
       }
-      m_ThPI.waitUntilTasksFinished(m_NumComponents);
+      m_ThPI->waitUntilTasksFinished(m_NumComponents);
     }
     else
     {

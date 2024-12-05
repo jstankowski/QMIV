@@ -35,11 +35,11 @@ class xShftCompPicProc : public xCorrespPixelShiftPrms, public xMultiThreaded
 public:
   inline void GenShftCompPics(xPicP* DstRef, xPicP* DstTst, const xPicP* SrcRef, const xPicP* SrcTst, const int32V4& GlobalColorDiffRef2Tst)
   {
-    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, &m_ThPI);
+    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
   }
   inline void GenShftCompPics(xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst, const int32V4& GlobalColorDiffRef2Tst)
   {
-    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, &m_ThPI);
+    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
   }
 };
 

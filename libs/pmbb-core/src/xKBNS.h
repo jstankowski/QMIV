@@ -4,7 +4,6 @@
 */
 
 #pragma once
-
 #include "xCommonDefCORE.h"
 #include "xVec.h"
 #include <vector>
@@ -16,31 +15,33 @@ namespace PMBB_NAMESPACE {
 class xKBNS //Kahan Babuska Neumaier Sumation
 {
 protected:
-  flt64 s = 0.0;
-  flt64 c = 0.0;
+  flt64 m_s = 0.0;
+  flt64 m_c = 0.0;
 
 public:
   inline void acc(flt64 v)
   {
-    flt64 t = s + v;
-    if(xAbs(s) >= xAbs(v)) { c += ((s - t) + v); }
-    else                   { c += ((v - t) + s); }
-    s = t;
+    flt64 t = m_s + v;
+    if(xAbs(m_s) >= xAbs(v)) { m_c += ((m_s - t) + v  ); }
+    else                     { m_c += ((v   - t) + m_s); }
+    m_s = t;
   }
 
   inline void acc(const flt64* x, const uintSize n)
   {
     for(uintSize i = 0; i < n; i++)
     {
-      flt64 t = s + x[i];
-      if(xAbs(s) >= xAbs(x[i])) { c += ((s - t) + x[i]); }
-      else                      { c += ((x[i] - t) + s); }
-      s = t;
+      flt64 t = m_s + x[i];
+      if(xAbs(m_s) >= xAbs(x[i])) { m_c += ((m_s  - t) + x[i]); }
+      else                        { m_c += ((x[i] - t) + m_s ); }
+      m_s = t;
     }
   }  
 
-  inline void  reset () { s = 0.0; c = 0.0; }
-  inline flt64 result() const { return s + c; }
+  xKBNS& operator += (flt64 v) { acc(v); return *this; }
+
+  inline void  reset () { m_s = 0.0; m_c = 0.0; }
+  inline flt64 result() const { return m_s + m_c; }
 
   static        flt64   Accumulate(const flt64* x, const uintSize n);
   static inline flt64   Accumulate(const std::vector<flt64>& Data) { return Accumulate(Data.data(), Data.size()); }
@@ -114,6 +115,8 @@ private:
 public:
   inline void acc(const flt64V4& v                  ) { KBNS4.acc(v   ); }
   inline void acc(const flt64V4* x, const uintSize n) { KBNS4.acc(x, n); }
+
+  xKBNS4& operator += (const flt64V4& v) { acc(v); return *this; }
 
   inline void    reset ()       { KBNS4.reset(); }
   inline flt64V4 result() const { return KBNS4.result(); }

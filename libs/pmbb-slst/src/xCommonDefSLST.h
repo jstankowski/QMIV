@@ -1,4 +1,9 @@
-﻿#pragma once
+﻿/*
+    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-License-Identifier: BSD-3-Clause
+*/
+
+#pragma once
 #include "xCommonDefCORE.h"
 
 namespace PMBB_NAMESPACE {

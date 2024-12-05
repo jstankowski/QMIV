@@ -138,6 +138,13 @@ const uint32 xMemory::c_Log2MemSizeCacheLine = (uint32)xLog2(c_MemSizeCacheLine)
 const uint32 xMemory::c_Log2MemSizePageBase  = (uint32)xLog2(c_MemSizePageBase );
 const uint32 xMemory::c_Log2MemSizePageHuge  = (uint32)xLog2(c_MemSizePageHuge );
 
+const uint32 xMemory::c_SizeMaskCacheLine = (1<<c_Log2MemSizeCacheLine) - 1;
+const uint32 xMemory::c_SizeMaskPageBase  = (1<<c_Log2MemSizePageBase ) - 1;
+const uint32 xMemory::c_SizeMaskPageHuge  = (1<<c_Log2MemSizePageHuge ) - 1;
+
+const uint32 xMemory::c_AllocThresholdPageBase = (c_SizeMaskPageBase >> 1) + (c_SizeMaskPageBase >> 2) + (c_SizeMaskPageBase >> 3);
+const uint32 xMemory::c_AllocThresholdPageHuge = (c_SizeMaskPageHuge >> 1) + (c_SizeMaskPageHuge >> 2) + (c_SizeMaskPageHuge >> 3);
+
 void* xMemory::xAlignedMallocCacheLine(uintSize Size)
 {
   if(c_MemSizeCacheLine) { return xAlignedMalloc(xRoundUpToNearestMultiple(Size, (uintSize) c_Log2MemSizeCacheLine), c_MemSizeCacheLine ); }
@@ -161,15 +168,17 @@ void* xMemory::xAlignedMallocPageHuge(uintSize Size)
 }
 void* xMemory::xAlignedMallocPageAuto(uintSize Size)
 {
-  bool UsePageHuge = c_MemSizePageHuge && ((Size > (2 * c_MemSizePageHuge)) || ((Size % c_MemSizePageHuge) < (0.85 * c_MemSizePageHuge)));
+  bool UsePageHuge = c_MemSizePageHuge && xWorthUseHuge(Size);
   return UsePageHuge ? xAlignedMallocPageHuge(Size) : xAlignedMallocPageBase(Size);
 }
 void* xMemory::xAlignedMallocAuto(uintSize Size)
 {  
-  bool UsePageHuge = c_MemSizePageHuge && ((Size > (2 * c_MemSizePageHuge)) || ((Size % c_MemSizePageHuge) < (0.85 * c_MemSizePageHuge)));
+  bool UsePageHuge = c_MemSizePageHuge && xWorthUseHuge(Size);
   if(UsePageHuge) { return xAlignedMallocPageHuge(Size); }
-  bool UsePageBase = c_MemSizePageBase && ((Size > (4 * c_MemSizePageBase)) || ((Size % c_MemSizePageBase) < (0.85 * c_MemSizePageBase)));
+  bool UsePageBase = c_MemSizePageBase && xWorthUseBase(Size);
   if(UsePageBase) { return xAlignedMallocPageBase(Size); }
+  bool UseLineSize = c_MemSizeCacheLine && xWorthUseLine(Size);
+  if(UseLineSize) { return xAlignedMallocCacheLine(Size); }
   return xAlignedMalloc(Size, 1);
 }
 

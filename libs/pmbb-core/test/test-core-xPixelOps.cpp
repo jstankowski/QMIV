@@ -14,6 +14,7 @@
 #include "../src/xPic.h"
 #include "../src/xPlane.h"
 #include "../src/xTestUtils.h"
+#include "xTimeUtils.h"
 
 using namespace PMBB_NAMESPACE;
 

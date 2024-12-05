@@ -71,9 +71,9 @@ bool xPicP::check(const std::string& Name) const
   {
     if(!Correct[c])
     {
-      fmt::print("FILE BROKEN " + Name + " (CMP={:d})\n", c);
+      fmt::print("FILE BROKEN {} (CMP={:d})\n", Name, c);
       std::string Msg = xPixelOps::FindOutOfRange(m_Origin[c], m_Stride, m_Width, m_Height, m_BitDepth, -1);
-      fmt::print(Msg);
+      fmt::print("{}", Msg);
       return false;
     }
   }

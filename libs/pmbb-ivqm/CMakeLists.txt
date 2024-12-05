@@ -41,3 +41,28 @@ else() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES
   endforeach()
   
 endif() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES
+
+#=========================================================================================================================================
+# Testing can be enabled for non-PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES builds only
+#=========================================================================================================================================
+if(CMAKE_TESTING_ENABLED AND (NOT PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES))
+
+  set(LIST_TESTS "xSSIM" "xStructSim")
+  foreach(TEST_NAME ${LIST_TESTS})
+    project (${LIB_PMBB_IVQM_NAME}-TEST-${TEST_NAME})
+    add_executable(${PROJECT_NAME} "")
+    target_sources(${PROJECT_NAME} PRIVATE test/test-ivqm-${TEST_NAME}.cpp )
+    target_compile_features   (${PROJECT_NAME} PRIVATE cxx_std_17)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${doctest_SOURCE_DIR})
+    target_include_directories(${PROJECT_NAME} PRIVATE ${fmtlib_SOURCE_DIR}/include)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_BASE_NAME}_SOURCE_DIR}/src)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_CORE_NAME}_SOURCE_DIR}/src)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_IVQM_NAME}_SOURCE_DIR}/src)
+    target_link_libraries     (${PROJECT_NAME} PRIVATE ${LIB_PMBB_IVQM_NAME} )
+    target_link_libraries     (${PROJECT_NAME} PRIVATE ${LIB_PMBB_CORE_NAME} )
+    target_link_libraries     (${PROJECT_NAME} PRIVATE ${LIB_PMBB_BASE_NAME} )
+    target_link_libraries     (${PROJECT_NAME} PRIVATE fmt::fmt Threads::Threads)
+    add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+  endforeach()
+
+endif()

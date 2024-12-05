@@ -8,7 +8,20 @@
 #include "xCommonDefCORE.h"
 #include "xStream.h"
 #include "xPic.h"
+
+#if __has_include("xPlane.h")
 #include "xPlane.h"
+#define X_PMBB_SEQ_HAS_PLANE 1
+#else
+#define X_PMBB_SEQ_HAS_PLANE 0
+#endif
+
+#if __has_include("xPicYUV.h")
+#include "xPicYUV.h"
+#define X_PMBB_SEQ_HAS_PICYUV 1
+#else
+#define X_PMBB_SEQ_HAS_PICYUV 0
+#endif
 
 namespace PMBB_NAMESPACE {
 
@@ -107,42 +120,55 @@ public:
   virtual ~xSeqBase() { }
   virtual void destroy() = 0;
 
-  inline bool allowsRead () { return xBackendAllowsRead (); }
-  inline bool allowsWrite() { return xBackendAllowsWrite(); }
-  inline bool allowsSeek () { return xBackendAllowsSeek (); }
+  inline bool allowsRead  () { return xBackendAllowsRead  (); }
+  inline bool allowsWrite () { return xBackendAllowsWrite (); }
+  inline bool allowsAppend() { return xBackendAllowsAppend(); }
+  inline bool allowsSeek  () { return xBackendAllowsSeek  (); }
 
   bool isModeAllowed(eMode OpMode);
 
-  tResult openFile  (tCSR, eMode OpMode);
+  tResult openFile  (tCSR FileName, eMode OpMode);
   tResult closeFile ();
 
   tResult readFrame (xPicP*       Pic);
   tResult writeFrame(const xPicP* Pic);
-  tResult readFrame (xPlane<uint8>*       Plane);
+#if X_PMBB_SEQ_HAS_PLANE
+  tResult readFrame (      xPlane<uint8>* Plane);
   tResult writeFrame(const xPlane<uint8>* Plane);
-  tResult readFrame (xPlane<uint16>*       Plane);
+  tResult readFrame (      xPlane<uint16>* Plane);
   tResult writeFrame(const xPlane<uint16>* Plane);
+#endif
+#if X_PMBB_SEQ_HAS_PICYUV
+  tResult readFrame (xPicYUV* Pic);
+  tResult writeFrame(const xPicYUV* Pic);
+#endif
 
   tResult seekFrame (int32 FrameNumber);
   tResult skipFrame (int32 NumFrames  );
 
-
 protected:
   bool xUnpackFrame(      xPicP* Pic);
   bool xPackFrame  (const xPicP* Pic);
+#if X_PMBB_SEQ_HAS_PLANE
   bool xUnpackFrame(      xPlane<uint8>* Pic);
   bool xPackFrame  (const xPlane<uint8>* Pic);
   bool xUnpackFrame(      xPlane<uint16>* Pic);
   bool xPackFrame  (const xPlane<uint16>* Pic);
+#endif
+#if X_PMBB_SEQ_HAS_PICYUV
+  bool xUnpackFrame(      xPicYUV* Pic);
+  bool xPackFrame  (const xPicYUV* Pic);
+#endif
 
 protected:
   virtual bool    xBackendAllowsRead  () const = 0; //requires xBackendRead, xBackendSkip
   virtual bool    xBackendAllowsWrite () const = 0; //requires xBackendWrite
+  virtual bool    xBackendAllowsAppend() const = 0; //requires xBackendWrite
   virtual bool    xBackendAllowsSeek  () const = 0; //requires xBackendSeek
   virtual tResult xBackendOpen        (tCSR FileName, eMode OpMode) = 0;
   virtual tResult xBackendClose       (                           ) = 0;
-  virtual tResult xBackendRead        (uint8* PackedFrame) = 0;
-  virtual tResult xBackendWrite       (uint8* PackedFrame) = 0;
+  virtual tResult xBackendRead        (      uint8* PackedFrame) = 0;
+  virtual tResult xBackendWrite       (const uint8* PackedFrame) = 0;
   virtual tResult xBackendSeek        (int32 FrameNumber ) = 0;
   virtual tResult xBackendSkip        (int32 NumFrames   ) = 0;
 };
@@ -168,19 +194,24 @@ public:
 protected:
   virtual bool    xBackendAllowsRead  () const final { return true; }
   virtual bool    xBackendAllowsWrite () const final { return true; }
+  virtual bool    xBackendAllowsAppend() const final { return true; }
   virtual bool    xBackendAllowsSeek  () const final { return true; }
-  virtual tResult xBackendOpen        (tCSR FileName, eMode OpMode) final ;
-  virtual tResult xBackendClose       (                           ) final ;
-  virtual tResult xBackendRead        (uint8* PackedFrame) final ;
-  virtual tResult xBackendWrite       (uint8* PackedFrame) final ;
-  virtual tResult xBackendSeek        (int32 FrameNumber ) final ;
-  virtual tResult xBackendSkip        (int32 NumFrames   ) final ;
+  virtual tResult xBackendOpen        (tCSR FileName, eMode OpMode) final;
+  virtual tResult xBackendClose       (                           ) final;
+  virtual tResult xBackendRead        (      uint8* PackedFrame) final;
+  virtual tResult xBackendWrite       (const uint8* PackedFrame) final;
+  virtual tResult xBackendSeek        (int32 FrameNumber ) final;
+  virtual tResult xBackendSkip        (int32 NumFrames   ) final;
 
 public:
   static int32 calcSingleFrameSize(int32V2 Size, int32 BitDepth, eCrF ChromaFormat);
   static int32 calcNumFramesInFile(int32V2 Size, int32 BitDepth, eCrF ChromaFormat, int64 FileSize);
   static tResult dumpFrame(const xPicP* Pic, const std::string& FileName, eCrF ChromaFormat, bool Append); //slow stateless write for debug purposes
 };
+
+//===============================================================================================================================================================================================================
+
+using xSeqRAW = xSeq;
 
 //===============================================================================================================================================================================================================
 
