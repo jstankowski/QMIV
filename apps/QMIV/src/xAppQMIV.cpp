@@ -17,7 +17,7 @@ namespace PMBB_NAMESPACE {
 const std::string_view xAppQMIV::c_BannerString =
 R"PMBBRAWSTRING(
 =============================================================================
-QMIV software v2.0-rc   [Quality Merics for Immersive Video]
+QMIV software v2.0   [Quality Merics for Immersive Video]
 
 Copyright (c) 2020-2024, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
@@ -35,7 +35,7 @@ https://doi.org/10.1109/TCSVT.2022.3179575
 const std::string_view xAppQMIV::c_HelpString =
 R"PMBBRAWSTRING(
 =============================================================================
-QMIV software v2.0-rc
+QMIV software v2.0
 
  Cmd | ParamName        | Description
 
