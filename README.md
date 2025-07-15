@@ -10,7 +10,7 @@ The QMIV framework calculates number of quality metrics, especially related to a
 The list of immersive video quality metrics includes: 
   * IV-PSNR    - Immersive Video - Peak Signal-to-Noise Ratio
   * IV-SSIM    - Immersive Video - Structural Similarity Index Measure
-  * IV-MS-SSIM - Immersive Video - Multi Scale Structural Similarity Index Measure (experimental)
+  * IV-MS-SSIM - Immersive Video - Multi Scale Structural Similarity Index Measure
 
 In addition the software is able to calculate following "general purpose" metrics:
   * PSNR    - Peak Signal-to-Noise Ratio
@@ -28,8 +28,13 @@ The QMIV software (former IV-PSNR software) and its architecture is described in
 
 ## 2. Authors
 
-* Jakub Stankowski   - Poznan University of Technology, Poznań, Poland  
-* Adrian Dziembowski - Poznan University of Technology, Poznań, Poland
+* Jakub Stankowski   - Poznan University of Technology (PUT), Poznań, Poland  
+* Adrian Dziembowski - Poznan University of Technology (PUT), Poznań, Poland
+
+Credits - PUT students and graduates who contributed to this project:
+
+* Weronika Nowak (IV-SSIM co-development and prototyping)
+* Patrycja Kaźmierczak (NEON optimized implementation) 
 
 ## 3. License
 
@@ -45,7 +50,7 @@ License, included below. This software may be subject to other third party
 and contributor rights, including patent rights, and no such rights are
 granted under this license.
 
-Copyright (c) 2019-2024, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
+Copyright (c) 2019-2025, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -76,7 +81,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 Building the QMIV framework requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 10.0, clang >= 13.0, MSVC >= 19.15). 
 
-The QMIV application and its build system is designed to create fastest possible binary. On x86-64 microarchitectures the build system can create four version of compiled application, each optimized for one predefined x86-64 Microarchitecture Feature Levels [x86-64, x86-64-v2, x86-64-v3, x86-64-v4] (defined in https://gitlab.com/x86-psABIs/x86-64-ABI). The final binary consists of this four optimized variants and a runtime dynamic dispatcher. The dispatcher uses CPUID instruction to detect available instruction set extensions and selects the fastest possible code path. 
+The QMIV application and its build system is designed to create fastest possible binary.   
+* On x86-64 microarchitecture the build system can create four version of compiled application, each optimized for one predefined x86-64 Microarchitecture Feature Levels [x86-64, x86-64-v2, x86-64-v3, x86-64-v4] (defined in https://gitlab.com/x86-psABIs/x86-64-ABI). The final binary consists of this four optimized variants and a runtime dynamic dispatcher. The dispatcher uses CPUID instruction to detect available instruction set extensions and selects the fastest possible code path.   
+* On ARM64 (AArch64) microarchitecture the build system can create two version of compiled application, optimized for ARM64v8.0 and ARM64v8.2. The final binary consists of this two optimized variants and a runtime dynamic dispatcher. The dispatcher uses ARM64 ELF hwcaps to detect available instruction set extensions and selects the fastest possible code path. This feature is available when building for Linux operating system only.   
 
 The QMIV CMake project defines the following parameters:
 
@@ -172,6 +179,7 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
 |-ssm | StructSimMode    | Calculation mode and structure variant (optional, default=BlockAveraged) [RegularGaussianFlt, RegularGaussianInt, RegularAveraged, BlockGaussianInt, BlockAveraged] |
+|-ssb | StructSimBrdExt  | Border extension mode (optional, applies to Regular mode only, default=None) [None, Nearest, Reflect, Mirror, Zero] (see scipy.ndimage.generic_filter) |
 |-sss | StructSimStride  | Stride between pixels/windows (optional, default=4) |
 |-ssw | StructSimWindow  | Size of structure window (optional, applies to Block modes only, default=8) [8,16,32] |
 
@@ -186,8 +194,7 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-nth | NumberOfThreads  | Number of worker threads (optional, default=-2, suggested ~8 for IVPSNR, all physical cores for SSIM) [0 = thread pool disabled, -1 = all available threads, -2 = reasonable auto]
-|-ilp | InterleavedPic   | Use additional image buffer with interleaved layout for IV-PSNR, (improves performance at a cost of increased memory usage, optional, default=1) |
+|-nth | NumberOfThreads  | Number of worker threads (optional, default=-2) [special values: 0 = thread pool disabled, -1 = all available threads, -2 = reasonable auto]
 |-v   | VerboseLevel     | Verbose level (optional, default=1) |
 
 #### External config file
@@ -217,7 +224,7 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 
 | Parameter name | Default value | Description |
 |:------------|:--------------|:------------|
-| USE_SIMD               | 1 | use SIMD (to be precise... use SSE 4.1 or AVX2 or AVX512) |
+| USE_SIMD               | 1 | use SIMD (to be precise... use SSE 4.1 or AVX2 or AVX512 or NEON) |
 | USE_RUNTIME_CMPWEIGHTS | 1 | use component weights provided at runtime |
 
 ### 5.4. Examples
@@ -288,7 +295,6 @@ CmpWeightsAverage = "4:1:1:0"
 #UnnoticeableCoef = "0:0:0:0"
 
 NumberOfThreads   = 12
-InterleavedPic    = 1
 VerboseLevel      = 3
 ```
 
@@ -350,22 +356,39 @@ Examples:
 
 ## 6. Changelog
 
+### QMIV v3.0
+
+* fixed calculation of MS-SSIM metric(s) for small pictures - avoid scaling below 32x32px
+* faster calculation of IV-SSIM and IV-MS-SSIM metrics by algorithmic optimization and wider SIMD coverage
+* faster calculation of SSIM metric(s) by using multi-block AVX512 implementation
+* added additional variant of SSIM-related metrics calculation: StructSimBrdExt
+* explicit support for ARM64 architecture
+  * fast SIMD implementation for ARM64 cores using NEON instructions
+  * supports Linux and Darwin target operating systems
+  * runtime dynamic dispatch (Linux only)
+* better performance for high core count CPUs
+  * reduced multi-threading overhead by switching to new thread pool API
+  * task batching for per-row operations
+* overhauled build system and simplified cmake files
+* improved test coverage
+* several minor bugfixes & performance improvements
+
 ### QMIV v2.0 [N0580]
 
-* added calculation of MS-SSIM (Multi Scale SSIM) metric and experimental IV-MS-SSIM (Immersive Video - Multi Scale SSIM),
+* added calculation of MS-SSIM (Multi Scale SSIM) metric and experimental IV-MS-SSIM (Immersive Video - Multi Scale SSIM)
 * added several variants of SSIM-related metrics calculation:
   * Structural similarity mode - allows to change mode and windowing approach:
     * RegularGaussianFlt, RegularGaussianInt, RegularAveraged - regular 11x11 mode
     * BlockGaussianInt, BlockAveraged - block-based mode
-    * two implenetations of Gaussian window (floating point based and integer based with quantized Gaussian filter coefficients) or simplified averaging window,
+    * two implenetations of Gaussian window (floating point based and integer based with quantized Gaussian filter coefficients) or simplified averaging window
   * Structural similarity stride - allows to calculate SSIM-related metrics every N pixels
   * Structural similarity window size - allows to provide window size for block mode SSIM
-* added new parameters: StructSimMode, StructSimStride, StructSimWindow,
-* switching default approach for SSIM-related metrics form (Mode=RegularGaussianFlt,Stride=1 - as defined by authors of SSIM metric) to (Mode=BlockAveraged,Stride=1,Window=8 - similar to approach used by FFMPEG) - this change reduces computational complexity while inceasing corellation with MOS,
-* fast SIMD (SSE4.1, AVX2, and AVX512) implementation for BlockAveraged SSIM mode,
-* added possibility to read BMP file or list of BMP files,
-* reduced thread pool overhead,
-* several small performance improvements & minor bugfixes.
+* added new parameters: StructSimMode, StructSimStride, StructSimWindow
+* switching default approach for SSIM-related metrics form (Mode=RegularGaussianFlt,Stride=1 - as defined by authors of SSIM metric) to (Mode=BlockAveraged,Stride=1,Window=8 - similar to approach used by FFMPEG) - this change reduces computational complexity while increasing correlation  with MOS
+* fast SIMD (SSE4.1, AVX2, and AVX512) implementation for BlockAveraged SSIM mode
+* added possibility to read BMP file or list of BMP files
+* reduced thread pool overhead
+* several small performance improvements & minor bugfixes
 
 ### QMIV v1.0.1 & v1.0.2
 
@@ -388,10 +411,10 @@ Examples:
   * reduced overhead of computing time measurement (switched from `std::chrono::high_resolution_clock` to `RDTSCP`)
   * increased precision of printed metric values
 * overhaul of IVPSNR v6.0 RGB mode into generic colorspace mode, including:
-  * consistent metric suffixes,
-  * RGB to YCbCr and YCbCr to RGB conversion,
-  * RGB passthrough mode,
-  * CalcMetricInRGB and ColorSpace arguments replaced by more general set of arguments (ColorSpaceInput, ColorSpaceMetric),
+  * consistent metric suffixes
+  * RGB to YCbCr and YCbCr to RGB conversion
+  * RGB passthrough mode
+  * CalcMetricInRGB and ColorSpace arguments replaced by more general set of arguments (ColorSpaceInput, ColorSpaceMetric)
 * input defined as PNG file or list of PNG files.
 
 ### IV-PSNR v6.0 [M68222]

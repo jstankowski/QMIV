@@ -22,6 +22,9 @@ std::string xImgTp2Str(eImgTp ImgTp);
 eClrSpcLC   xStr2ClrSpcLC(const std::string& ClrSpcLC);
 std::string xClrSpcLC2Str(eClrSpcLC ClrSpc);
 
+eMrgExt     xStr2MrgExt(const std::string& MrgExt);
+std::string xMrgExt2Str(eMrgExt MrgExt);
+
 eActn       xStr2Actn(const std::string& Actn);
 std::string xActn2Str(eActn IPA);
 
@@ -34,7 +37,7 @@ class xMiscUtilsCORE
 {
 public:
   static std::string formatCompileTimeSetup();
-
+  static std::string formatBuildInfo       ();
 };
 
 //===============================================================================================================================================================================================================

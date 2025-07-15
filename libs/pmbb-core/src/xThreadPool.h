@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -15,6 +15,13 @@
 #include <set>
 #include <stack>
 #include <future>
+
+#if __has_include("xCoreInfo.h") && __has_include("xCoreAffinity.h")
+#include "xCoreInfo.h"
+#define X_PMBB_THREAD_POOL_HAS_CORE_SELECTION 1
+#else
+#define X_PMBB_THREAD_POOL_HAS_CORE_SELECTION 0
+#endif
 
 namespace PMBB_NAMESPACE {
 
@@ -42,7 +49,7 @@ public:
 
 //===============================================================================================================================================================================================================
 
-class xThreadPool
+class xThreadPoolCmn
 {
 public:
   class xTaskBase
@@ -65,18 +72,20 @@ public:
       Custom
     };
     
-    static const int8 c_DefaultPriority = 0;
+    static const int8 c_PriorityDef = 0;
+    static const int8 c_PriorityMin = std::numeric_limits<int8>::min();
+    static const int8 c_PriorityMax = std::numeric_limits<int8>::max();
 
   protected:
     int8    m_ClientId = NOT_VALID;
-    int8    m_Priority = c_DefaultPriority;
+    int8    m_Priority = c_PriorityDef;
     eType   m_Type     = eType  ::UNKNOWN;
     eStatus m_Status   = eStatus::UNKNOWN;
 
     virtual void WorkingFunction(int32 ThreadIdx) = 0;
 
   public:
-//             xPoolTask(uintPtr ClientId, int8 Priority) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::UNKNOWN; m_Status = eStatus::UNKNOWN; }
+//           xPoolTask(uintPtr ClientId, int8 Priority) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::UNKNOWN; m_Status = eStatus::UNKNOWN; }
     virtual ~xTaskBase() {};
 
     static  void StarterFunction(xTaskBase* PoolTask, int32 ThreadIdx);
@@ -104,8 +113,8 @@ public:
   protected:
     tFunct m_Function; //void Function(int32 ThreadIdx)
   public:
-    xTaskFunction(                                             ) { m_ClientId = 0       ; m_Priority = int8_min; m_Type = eType::Function; m_Status = eStatus::UNKNOWN; m_Function = nullptr ; }
-    xTaskFunction(int8 ClientId, int8 Priority, tFunct Function) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::Function; m_Status = eStatus::Waiting; m_Function = Function; }
+    xTaskFunction(                                             ) { m_ClientId = 0       ; m_Priority = c_PriorityMin; m_Type = eType::Function; m_Status = eStatus::UNKNOWN; m_Function = nullptr ; }
+    xTaskFunction(int8 ClientId, int8 Priority, tFunct Function) { m_ClientId = ClientId; m_Priority = Priority     ; m_Type = eType::Function; m_Status = eStatus::Waiting; m_Function = Function; }
     
     void setFunction ([[maybe_unused]] int8 ClientId, int8 Priority, tFunct Function) { assert(m_ClientId == ClientId); m_Priority = Priority; assert(m_Type == eType::Function); m_Status = eStatus::Waiting; m_Function = Function; }
   protected:
@@ -116,7 +125,7 @@ protected:
   class xTaskTerminator : public xTaskBase
   {
   public:
-    xTaskTerminator() { m_ClientId = NOT_VALID; m_Priority = int8_max; m_Type = eType::Terminator; m_Status = eStatus::Waiting; }
+    xTaskTerminator() { m_ClientId = NOT_VALID; m_Priority = c_PriorityMax; m_Type = eType::Terminator; m_Status = eStatus::Waiting; }
   protected:
     void WorkingFunction(int32 /*ThreadIdx*/) final {}
   };
@@ -124,10 +133,19 @@ protected:
 public:
   using tWQ = xPtrRing<xTaskBase>;
   using tCQ = xPtrRing<xTaskBase>;
+};
 
+//===============================================================================================================================================================================================================
+
+class xThreadPool : public xThreadPoolCmn
+{
 protected:
   //threads data
   int32                            m_NumThreads;
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  //simple core selection
+  std::vector<const xCoreInfo*>    m_CoreInfos;
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
   xEvent                           m_Event;
   std::vector<std::future<uint32>> m_Future;
   std::vector<std::thread        > m_Thread;
@@ -149,8 +167,11 @@ public:
   xThreadPool            (const xThreadPool&) = delete; //delete copy constructor
   xThreadPool& operator= (const xThreadPool&) = delete; //delete assignement operator
 
-  void       create   (int32 NumThreads, int32 WaitingQueueSize);
-  void       destroy  ();
+  void       create (int32 NumThreads, int32 WaitingQueueSize);
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  void       create (const std::vector<int32>& CoreIdxs, const xCoreInfo* CoreInfos, int32 WaitingQueueSize);
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  void       destroy();
              
   int8       registerClient  (int32 CompletedQueueSize);
   bool       unregisterClient(int8  ClientId          );
@@ -224,13 +245,13 @@ protected:
   int32         m_NumChunks  = NOT_VALID;
 
 public:
-  xThreadPoolInterfaceBase() { m_ClientIdx = NOT_VALID; m_ThreadPool = nullptr; m_Priority = tTask::c_DefaultPriority; m_NumChunks = NOT_VALID; }
+  xThreadPoolInterfaceBase() { m_ClientIdx = NOT_VALID; m_ThreadPool = nullptr; m_Priority = tTask::c_PriorityDef; m_NumChunks = NOT_VALID; }
   xThreadPoolInterfaceBase            (const xThreadPoolInterfaceBase&) = delete; //delete copy constructor
   virtual ~xThreadPoolInterfaceBase() {};
   xThreadPoolInterfaceBase& operator= (const xThreadPoolInterfaceBase&) = delete; //delete assignement operator
 
   virtual void init    (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks);
-  virtual void uininit ();
+  virtual void uninit  ();
   bool         isActive() { return m_ThreadPool != nullptr; }
 
   void   setPriority  (int8  Priority ){ m_Priority = Priority; }
@@ -264,22 +285,41 @@ protected:
   std::vector<tTask* > m_StoredTasks;
 
 public:
-  xThreadPoolInterfaceFunction() { m_ClientIdx = NOT_VALID; m_ThreadPool = nullptr; m_Priority = tTask::c_DefaultPriority; m_NumChunks = NOT_VALID; }
+  xThreadPoolInterfaceFunction() { m_ClientIdx = NOT_VALID; m_ThreadPool = nullptr; m_Priority = tTask::c_PriorityDef; m_NumChunks = NOT_VALID; }
   xThreadPoolInterfaceFunction            (const xThreadPoolInterfaceFunction&) = delete; //delete copy constructor
   xThreadPoolInterfaceFunction& operator= (const xThreadPoolInterfaceFunction&) = delete; //delete assignement operator
 
-  void init   (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks) final;
-  void uininit() final;
+  void init  (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks) final;
+  void uninit() final;
 
   void   addWaitingTask        (tFunct Function);
   void   waitUntilTasksFinished(int32 NumTasksToWaitFor);
-  void   waitUntilTasksFinishe2(int32 NumTasksToWaitFor);
 
-  //dev
-  void   storeTask             (tFunct Function);
-  int32  submitStoredTasks     ();
-  void   executeStoredTasks    ();
+  //faster interface for batch submision - less locking overhead
+  void   storeTask             (tFunct Function); // store new task in buffer
+  int32  submitStoredTasks     (); // submit entire content of buffer
+  void   executeStoredTasks    (); // submit entire content of buffer & wait until finished
+
+  /*EXAMPLE 0 - task are available for worker pool one by one, just after each addWaitingTask completion
+  *   for(int32 i=0; i<Num; i++) { THPI->addWaitingTask([some function]); }
+  *   THPI->waitUntilTasksFinished(Num);
+  * 
+  * EXAMPLE 1 - task are available for worker pool in sigle batch, just after submitStoredTasks completion
+  *   for(int32 i=0; i<Num; i++) { THPI->storeTask([some function]); }
+  *   THPI->submitStoredTasks();
+  *   THPI->waitUntilTasksFinished(Num);
+  * 
+  * EXAMPLE 2 - simplified EXAMPLE 1
+  *   for(int32 i=0; i<Num; i++) { THPI->storeTask([some function]); }
+  *   THPI->executeStoredTasks();
+  */
 };
+
+//===============================================================================================================================================================================================================
+// Convinient threading
+//===============================================================================================================================================================================================================
+
+using tThPI = xThreadPoolInterfaceFunction;
 
 //===============================================================================================================================================================================================================
 

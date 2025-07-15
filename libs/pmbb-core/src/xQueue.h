@@ -234,13 +234,9 @@ template<class XXX> void xPriorityQueue<XXX>::EnqueueWait(XXX Data)
   m_DequeueConditionVariable.notify_one();
   //release lock - std::unique_lock destructor... 
 }
-template<class XXX> void xPriorityQueue<XXX>::EnqueueWaitN(XXX* Data, int32 Num)
+template<class XXX> void xPriorityQueue<XXX>::EnqueueWaitN(XXX* /*Data*/, int32 /*Num*/)
 {
-  assert(0);
-  for(int32 i = 0; i < Num; i++)
-  {
-    EnqueueWait(Data[i]);
-  }
+  assert(0); exit(EXIT_FAILURE);
 }
 template<class XXX> void xPriorityQueue<XXX>::DequeueWait(XXX& Data)
 {

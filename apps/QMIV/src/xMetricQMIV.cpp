@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -14,7 +14,8 @@ namespace PMBB_NAMESPACE {
 eMetric xStrToMetric(const std::string_view Metric)
 {
   std::string MetricU = xString::toUpper(Metric);
-  return MetricU ==     "PSNR" ? eMetric::    PSNR :
+  return MetricU ==      "MSE" ? eMetric::     MSE :
+         MetricU ==     "PSNR" ? eMetric::    PSNR :
          MetricU ==   "WSPSNR" ? eMetric::  WSPSNR :
          MetricU ==   "IVPSNR" ? eMetric::  IVPSNR :
          MetricU ==     "SSIM" ? eMetric::    SSIM :
@@ -25,14 +26,18 @@ eMetric xStrToMetric(const std::string_view Metric)
 }
 std::string xMetricToStr(eMetric Metric)
 {
-  return Metric == eMetric::    PSNR ?     "PSNR" :
-         Metric == eMetric::  WSPSNR ?   "WSPSNR" :
-         Metric == eMetric::  IVPSNR ?   "IVPSNR" :
-         Metric == eMetric::    SSIM ?     "SSIM" :
-         Metric == eMetric::  MSSSIM ?   "MSSSIM" :
-         Metric == eMetric::  IVSSIM ?   "IVSSIM" :
-         Metric == eMetric::IVMSSSIM ? "IVMSSSIM" :
-                                       "UNDEFINED";
+  switch(Metric)
+  {
+  case eMetric::MSE     : return       "MSE"; break;
+  case eMetric::PSNR    : return      "PSNR"; break;
+  case eMetric::WSPSNR  : return    "WSPSNR"; break;
+  case eMetric::IVPSNR  : return    "IVPSNR"; break;
+  case eMetric::SSIM    : return      "SSIM"; break;
+  case eMetric::MSSSIM  : return    "MSSSIM"; break;
+  case eMetric::IVSSIM  : return    "IVSSIM"; break;
+  case eMetric::IVMSSSIM: return  "IVMSSSIM"; break;
+  default               : return "UNDEFINED"; break;
+  }
 }
 
 //===============================================================================================================================================================================================================
@@ -45,7 +50,7 @@ void xMetricStat::initMetric(eMetric Metric, int32 NumFrames)
   m_SumTicks  = 0;
   m_AvgDuration = tDurationMS(0);
   constexpr flt64 InitValue = std::numeric_limits<flt64>::quiet_NaN();
-  bool IsPerCmp = xMetricInfo::IsPerCmp[(int32)Metric];
+  bool IsPerCmp = xMetricInfo::Metrics[(int32)m_Metric].IsPerCmp;
   if(IsPerCmp) { m_ValCmp.resize(NumFrames, xMakeVec4(InitValue)); }
   m_ValPic.resize(NumFrames, InitValue);    
   m_AvgPic   = InitValue;
@@ -60,7 +65,7 @@ void xMetricStat::initSuffixes(bool UseMask, bool UseRGB)
   else if(UseRGB           ) { m_SuffixCmp = " R:G:B    "; }
   else                       { m_SuffixCmp = " Y:Cb:Cr  "; }
 
-  bool IsPerPic = xMetricInfo::IsPerPic[(int32)m_Metric];
+  bool IsPerPic = xMetricInfo::Metrics[(int32)m_Metric].IsPerPic;
   if(IsPerPic)
   {
     if     (UseMask && UseRGB) { m_SuffixPic = "-M-RGB    "; }
@@ -99,7 +104,7 @@ void xMetricStat::calcAvgMetric(int32 NumFrames)
 std::string xMetricStat::formatPerCmpMetric(int32 FrameIdx)
 {
   const std::string MetricName   = xMetricToStr(m_Metric);
-  const bool        IsNormalized = xMetricInfo::IsNormalized[(int32)m_Metric];
+  const bool        IsNormalized = xMetricInfo::Metrics[(int32)m_Metric].IsNormalized;
   const std::string SingleFormat = IsNormalized ? "{:8.6f} " : "{:8.4f} ";
 
   std::string Result = fmt::format("{:>8}{} ", MetricName, m_SuffixCmp);    
@@ -110,7 +115,7 @@ std::string xMetricStat::formatPerCmpMetric(int32 FrameIdx)
 std::string xMetricStat::formatPerPicMetric(int32 FrameIdx)
 {
   const std::string MetricName   = xMetricToStr(m_Metric);
-  const bool        IsNormalized = xMetricInfo::IsNormalized[(int32)m_Metric];
+  const bool        IsNormalized = xMetricInfo::Metrics[(int32)m_Metric].IsNormalized;
   const std::string SingleFormat = IsNormalized ? "{:8.6f} " : "{:8.4f} ";
 
   std::string Result = fmt::format("{:>8}{} ", MetricName, m_SuffixPic);    
@@ -121,9 +126,9 @@ std::string xMetricStat::formatPerPicMetric(int32 FrameIdx)
 std::string xMetricStat::formatAvgMetric(const std::string LineHeader)
 {
   const std::string      MetricName   = xMetricToStr(m_Metric);
-  const bool             IsPerCmp     = xMetricInfo::IsPerCmp[(int32)m_Metric];
-  const bool             IsNormalized = xMetricInfo::IsNormalized[(int32)m_Metric];
-  const std::string_view Unit         = xMetricInfo::Unit    [(int32)m_Metric];
+  const bool             IsPerCmp     = xMetricInfo::Metrics[(int32)m_Metric].IsPerCmp    ;
+  const bool             IsNormalized = xMetricInfo::Metrics[(int32)m_Metric].IsNormalized;
+  const std::string_view Unit         = xMetricInfo::Metrics[(int32)m_Metric].Unit        ;
   const std::string      NameFormat   = LineHeader.empty() ? "{:<8}{} " : "{:>8}{} ";
   const std::string      SingleFormat = IsNormalized ? "{:10.8f} {}  " : "{:10.6f} {}  ";
 

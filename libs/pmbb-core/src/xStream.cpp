@@ -1,9 +1,12 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #include "xStream.h"
+#if defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
+#include <filesystem>
+#endif //defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
 
 namespace PMBB_NAMESPACE {
 
@@ -20,7 +23,21 @@ bool xStream::openFile(tCStr& FilePath, const eMode OpenMode)
   if(OpenMode == eMode::Append) { StrmDirF = eDirF::Write; OpenFlags |= std::ios_base::out | std::ios_base::ate; }
 
   std::fstream* FileHandle = new std::fstream();
+
+#if defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
+  //treat FilePath as filesystem::path to avoid file length problems on Windows
+  std::error_code ErrorCode;
+  std::filesystem::path FileSystemPath(FilePath);
+  if(!FileSystemPath.is_absolute())
+  {
+    std::filesystem::path AbsFileSystemPath = std::filesystem::absolute(FileSystemPath, ErrorCode);
+    if(!ErrorCode) { FileSystemPath = AbsFileSystemPath; }
+  }
+  FileHandle->open(FileSystemPath, OpenFlags);
+#else
   FileHandle->open(FilePath, OpenFlags);
+#endif //defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
+    
   bool Result = FileHandle->is_open() && FileHandle->good();
   if(Result)
   {

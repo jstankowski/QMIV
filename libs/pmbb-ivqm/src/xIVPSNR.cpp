@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski   <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski   <jakub.stankowski@put.poznan.pl>
     SPDX-FileCopyrightText: 2018-2019 Adrian Dziembowski <adrian.dziembowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
@@ -63,15 +63,8 @@ flt64 xIVPSNR::xCalcQualAsymmetricPic(const xPicP* Tst, const xPicP* Ref, const 
 {
   const int32 Height = Ref->getHeight();
 
-  if(m_ThPI->isActive())
-  {
-    for(int32 y = 0; y < Height; y++) { m_ThPI->addWaitingTask([this, &Tst, &Ref, &GCD, y](int32) { m_RowDistsV4[y] = tCPS::xCalcDistAsymmetricRow(Tst, Ref, y, GCD, m_SearchRange, m_CmpWeightsSearch); }); }
-    m_ThPI->waitUntilTasksFinished(Height);
-  }
-  else
-  {
-    for(int32 y = 0; y < Height; y++) { m_RowDistsV4[y] = tCPS::xCalcDistAsymmetricRow(Tst, Ref, y, GCD, m_SearchRange, m_CmpWeightsSearch); }
-  }
+  for(int32 y = 0; y < Height; y += c_NumRowsInRng) { m_ThPI->storeTask([this, &Tst, &Ref, &GCD, y, Height](int32) { xCalcQualAsymmetricRng(Tst, Ref, GCD, y, xMin(y + c_NumRowsInRng, Height)); }); }
+  m_ThPI->executeStoredTasks();
 
   flt64V4 CmpError = xMakeVec4<flt64>(0.0);
   if(m_UseWS)
@@ -93,7 +86,13 @@ flt64 xIVPSNR::xCalcQualAsymmetricPic(const xPicP* Tst, const xPicP* Ref, const 
   const flt64   PicQuality        = (CmpQuality * (flt64V4)CmpWeightsAverage).getSum() * CmpWeightInvDenom;
   return PicQuality;
 }
-
+void xIVPSNR::xCalcQualAsymmetricRng(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY)
+{
+  for(int32 y = BegY; y < EndY; y++)
+  {
+    m_RowDistsV4[y] = tCPS::CalcDistAsymmetricRow(Tst, Ref, y, GlobalColorDiff, m_SearchRange, m_CmpWeightsSearch);
+  }
+}
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // asymetric Q interleaved
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -101,15 +100,8 @@ flt64 xIVPSNR::xCalcQualAsymmetricPic(const xPicI* Tst, const xPicI* Ref, const 
 {
   const int32 Height = Ref->getHeight();
 
-  if(m_ThPI->isActive())
-  {
-    for(int32 y = 0; y < Height; y++) { m_ThPI->addWaitingTask([this, &Tst, &Ref, &GCD, y](int32) { m_RowDistsV4[y] = tCPS::xCalcDistAsymmetricRow(Tst, Ref, y, GCD, m_SearchRange, m_CmpWeightsSearch); }); }
-    m_ThPI->waitUntilTasksFinished(Height);
-  }
-  else
-  {
-    for(int32 y = 0; y < Height; y++) { m_RowDistsV4[y] = tCPS::xCalcDistAsymmetricRow(Tst, Ref, y, GCD, m_SearchRange, m_CmpWeightsSearch); }
-  }
+  for(int32 y = 0; y < Height; y+=c_NumRowsInRng) { m_ThPI->storeTask([this, &Tst, &Ref, &GCD, y, Height](int32) { xCalcQualAsymmetricRng(Tst, Ref, GCD, y, xMin(y + c_NumRowsInRng, Height)); }); }
+  m_ThPI->executeStoredTasks();
 
   flt64V4 CmpError = { 0, 0, 0, 0 };
   if(m_UseWS)
@@ -130,6 +122,13 @@ flt64 xIVPSNR::xCalcQualAsymmetricPic(const xPicI* Tst, const xPicI* Ref, const 
   const flt64   CmpWeightInvDenom = 1.0 / (flt64)SumCmpWeight;
   const flt64   PicQuality        = (CmpQuality * (flt64V4)CmpWeightsAverage).getSum() * CmpWeightInvDenom;
   return PicQuality;
+}
+void xIVPSNR::xCalcQualAsymmetricRng(const xPicI* Tst, const xPicI* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY)
+{
+  for(int32 y = BegY; y < EndY; y++)
+  {
+    m_RowDistsV4[y] = tCPS::CalcDistAsymmetricRow(Tst, Ref, y, GlobalColorDiff, m_SearchRange, m_CmpWeightsSearch);
+  }
 }
 
 //===============================================================================================================================================================================================================
@@ -174,18 +173,11 @@ flt64 xIVPSNRM::xCalcQualAsymmetricPicM(const xPicI* Tst, const xPicI* Ref, cons
 {
   const int32 Height = Ref->getHeight();
 
-  if(m_ThPI->isActive())
+  for(int32 y = 0; y < Height; y += c_NumRowsInRng)
   {
-    for(int32 y = 0; y < Height; y++)
-    {
-      m_ThPI->addWaitingTask([this, &Tst, &Ref, &Msk, &GCD, y](int32) { m_RowDistsV4[y] = tCPS::xCalcDistAsymmetricRowM(Tst, Ref, Msk, y, GCD, m_SearchRange, m_CmpWeightsSearch); });
-    }
-    m_ThPI->waitUntilTasksFinished(Height);
+    m_ThPI->storeTask([this, &Tst, &Ref, &Msk, &GCD, y, Height](int32) { xCalcQualAsymmetricRngM(Tst, Ref, Msk, GCD, y, xMin(y + c_NumRowsInRng, Height)); });
   }
-  else
-  {
-    for(int32 y = 0; y < Height; y++) { m_RowDistsV4[y] = tCPS::xCalcDistAsymmetricRowM(Tst, Ref, Msk, y, GCD, m_SearchRange, m_CmpWeightsSearch); }
-  }
+  m_ThPI->executeStoredTasks();
 
   flt64V4 CmpError = { 0, 0, 0, 0 };
   if(m_UseWS)
@@ -206,6 +198,13 @@ flt64 xIVPSNRM::xCalcQualAsymmetricPicM(const xPicI* Tst, const xPicI* Ref, cons
   const flt64   CmpWeightInvDenom = 1.0 / (flt64)SumCmpWeight;
   const flt64   PicQuality        = (CmpQuality * (flt64V4)CmpWeightsAverage).getSum() * CmpWeightInvDenom;
   return PicQuality;
+}
+void xIVPSNRM::xCalcQualAsymmetricRngM(const xPicI* Tst, const xPicI* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY)
+{
+  for(int32 y = BegY; y < EndY; y++)
+  {
+    m_RowDistsV4[y] = tCPS::CalcDistAsymmetricRowM(Tst, Ref, Msk, y, GlobalColorDiff, m_SearchRange, m_CmpWeightsSearch);
+  }
 }
 
 //===============================================================================================================================================================================================================

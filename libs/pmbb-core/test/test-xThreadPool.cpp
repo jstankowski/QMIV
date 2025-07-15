@@ -16,17 +16,17 @@ using namespace PMBB_NAMESPACE;
 
 //===============================================================================================================================================================================================================
 
-static const int32 TestNumTasks   = 4096;
+static const int32 TestNumTasks   = 8192;
 static const int32 TestQueueSize  = TestNumTasks + 16;
-static const int32 TestNumThreads = 8;
+static const int32 TestNumThreads = 16;
 
 //===============================================================================================================================================================================================================
 
 struct xData
 {
-  int64 Time;
-  int32 ThreadIdx;
-  int32 TaskIdx;
+  int64  TimeProc;
+  int32  ThreadIdx;
+  int32  TaskIdx;
 };
 
 void testTask(int32 ThreadIdx, int32 TaskIdx, xData* Data, std::atomic_int32_t* Counter)
@@ -63,7 +63,7 @@ void testPerTaskInterface()
   while(ThPI.getCompletedQueueLoad() < TestNumTasks)
   {
     WaitCount++;
-    std::this_thread::sleep_for(tDurationMS(100));
+    std::this_thread::sleep_for(tDurationMS(1));
   }
 
   uint64 TP2 = xTSC();
@@ -72,7 +72,7 @@ void testPerTaskInterface()
 
   uint64 TP3 = xTSC();
 
-  ThPI.uininit();
+  ThPI.uninit();
   ThreadPool.destroy();
 
   CHECK(Cnt == TestNumTasks);
@@ -84,10 +84,10 @@ void testPerTaskInterface()
     CHECK(Data[i].TaskIdx < TestNumTasks);
     CHECK(Data[i].ThreadIdx >= 0             );
     CHECK(Data[i].ThreadIdx <  TestNumThreads);
-    Total += Data[i].Time;
+    Total += Data[i].TimeProc;
   }
 
-  fmt::print("WC={:<2d} TS={:<10d}                          TW={:<10d} TT={}\n", WaitCount, TP1 - TP0, TP3 - TP2, (flt64)Total / (flt64)TestNumTasks);
+  fmt::print("WC={:<2d} TS={:<10d}                                 TW={:<10d} ticks TT={:.2f} ticks/task\n", WaitCount, TP1 - TP0, TP3 - TP2, (flt64)Total / (flt64)TestNumTasks);
 }
 
 void testBulkInterface()
@@ -118,16 +118,16 @@ void testBulkInterface()
   while(ThPI.getCompletedQueueLoad() < TestNumTasks)
   {
     WaitCount++;
-    std::this_thread::sleep_for(tDurationMS(100));
+    std::this_thread::sleep_for(tDurationMS(1));
   }
 
   uint64 TP3 = xTSC();
 
-  ThPI.waitUntilTasksFinishe2(TestNumTasks);
+  ThPI.waitUntilTasksFinished(TestNumTasks);
 
   uint64 TP4 = xTSC();
 
-  ThPI.uininit();
+  ThPI.uninit();
   ThreadPool.destroy();
 
   CHECK(Cnt == TestNumTasks);
@@ -139,10 +139,10 @@ void testBulkInterface()
     CHECK(Data[i].TaskIdx < TestNumTasks);
     CHECK(Data[i].ThreadIdx >= 0             );
     CHECK(Data[i].ThreadIdx <  TestNumThreads);
-    Total += Data[i].Time;
+    Total += Data[i].TimeProc;
   }
 
-  fmt::print("WC={:<2d} TS={:<10d} ({:10d} +{:10d}) TW={:<10d} TT={}\n", WaitCount, TP2 - TP0, TP1 - TP0, TP2 - TP1, TP4 - TP3, (flt64)Total/(flt64)TestNumTasks);
+  fmt::print("WC={:<2d} TS={:<10d} (ST={:<10d} + SS={:<10d}) TW={:<10d} ticks TT={:.2f} ticks/task\n", WaitCount, TP2 - TP0, TP1 - TP0, TP2 - TP1, TP4 - TP3, (flt64)Total/(flt64)TestNumTasks);
 }
 
 //===============================================================================================================================================================================================================

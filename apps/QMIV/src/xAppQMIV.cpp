@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -17,9 +17,9 @@ namespace PMBB_NAMESPACE {
 const std::string_view xAppQMIV::c_BannerString =
 R"PMBBRAWSTRING(
 =============================================================================
-QMIV software v2.0   [Quality Merics for Immersive Video]
+QMIV software v3.0-dev   [Quality Merics for Immersive Video]
 
-Copyright (c) 2020-2024, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
+Copyright (c) 2020-2025, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
 Developed at Poznan University of Technology, Poznan, Poland
 Authors: Jakub Stankowski, Adrian Dziembowski
@@ -28,6 +28,10 @@ The IV-PSNR metric is described in following paper:
 A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR - The Objective Quality Metric for Immersive Video Applications," in IEEE Transactions on Circuits and Systems for Video Technology, vol. 32, no. 11, pp. 7575-7591, Nov. 2022, doi: 10.1109/TCSVT.2022.3179575.
 https://doi.org/10.1109/TCSVT.2022.3179575
 
+The IV-SSIM metric is described in following paper:
+A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: 10.3390/app14167090.
+https://doi.org/10.3390/app14167090
+
 =============================================================================
 
 )PMBBRAWSTRING";
@@ -35,7 +39,7 @@ https://doi.org/10.1109/TCSVT.2022.3179575
 const std::string_view xAppQMIV::c_HelpString =
 R"PMBBRAWSTRING(
 =============================================================================
-QMIV software v2.0
+QMIV software v3.0-dev
 
  Cmd | ParamName        | Description
 
@@ -94,6 +98,8 @@ usage::IV_specific ----------------------------------------------------------
 usage::structural_similarity_specific ---------------------------------------
  -ssm  StructSimMode      (optional, default=BlockAveraged)
                           [RegularGaussianFlt, RegularGaussianInt, RegularAveraged, BlockGaussianInt, BlockAveraged] 
+ -ssb  StructSimBrdExt    (optional, applies to Regular mode only, default=None)
+                          [None, Nearest, Reflect, Mirror, Zero] (see scipy.ndimage.generic_filter)
  -sss  StructSimStride    (optional, default=4)
  -ssw  StructSimWindow    (optional, applies to Block modes only, default=8, [8,16,32])
 
@@ -111,9 +117,6 @@ usage::software_operation ---------------------------------------------------
  -nth  NumberOfThreads    Number of worker threads (optional, default=-2,
                           suggested ~8 for IVPSNR, all physical cores for SSIM)
                           [-1 = all available threads, -2 = reasonable auto]
- -ilp  InterleavedPic     Use additional image buffer with interleaved layout for IV-PSNR 
-                          (improves performance at a cost of increased memory usage
-                          optional, default=1)
  -v    VerboseLevel       Verbose level (optional, default=1)
 
  -c    "config.cfg"       External config file - in INI format (optional)
@@ -151,8 +154,8 @@ Example - config file:
 void xAppQMIV::registerCmdParams()
 {
   //dispatcher params to be ignored
-  m_CfgParser.addCmdFake("", "DispatchForceMFL");
-  m_CfgParser.addCmdFake("", "DispatchVerbose" );
+  m_CfgParser.addCmdFakeParm("", "DispatchForce"  );
+  m_CfgParser.addCmdFakeParm("", "DispatchVerbose");
   //basic io
   m_CfgParser.addCmdParm("i0" , "InputFile0"       , "", "InputFile0"          );
   m_CfgParser.addCmdParm("i1" , "InputFile1"       , "", "InputFile1"          );  
@@ -186,7 +189,7 @@ void xAppQMIV::registerCmdParams()
   m_CfgParser.addCmdParm("unc", "UnnoticeableCoef" , "", "UnnoticeableCoef"    );
   //ssim specific
   m_CfgParser.addCmdParm("ssm", "StructSimMode"    , "", "StructSimMode"       );
-//m_CfgParser.addCmdParm("ssb", "StructSimBrdExt"  , "", "StructSimBrdExt"     ); - not ready jet ||||| -ssb  StructSimBrdExt    (optional, applies to Regular mode only, default=None)
+  m_CfgParser.addCmdParm("ssb", "StructSimBrdExt"  , "", "StructSimBrdExt"     );
   m_CfgParser.addCmdParm("sss", "StructSimStride"  , "", "StructSimStride"     );
   m_CfgParser.addCmdParm("ssw", "StructSimWindow"  , "", "StructSimWindow"     );
   //validation 
@@ -194,7 +197,6 @@ void xAppQMIV::registerCmdParams()
   m_CfgParser.addCmdParm("nma", "NameMismatchActn" , "", "NameMismatchActn"    );
   //operation
   m_CfgParser.addCmdParm("nth", "NumberOfThreads"  , "", "NumberOfThreads"     );
-  m_CfgParser.addCmdParm("ilp", "InterleavedPic"   , "", "InterleavedPic"      );
   m_CfgParser.addCmdParm("v"  , "VerboseLevel"     , "", "VerboseLevel"        );  
 }
 bool xAppQMIV::loadConfiguration(int argc, const char* argv[])
@@ -275,10 +277,7 @@ bool xAppQMIV::readConfiguration()
   }
   else
   {
-    m_CalcMetric[(int32)eMetric::PSNR  ] = true;
-    m_CalcMetric[(int32)eMetric::WSPSNR] = true;
-    m_CalcMetric[(int32)eMetric::IVPSNR] = true;
-    m_CalcMetric[(int32)eMetric::IVSSIM] = true;
+    for(int32 m = 0; m < c_MetricsNum; m++) { if(xMetricInfo::Metrics[m].IsDefault) { m_CalcMetric[m] = true; } }
   }
 
   //mask io -----------------------------------------------------------------------------------------------------------
@@ -323,12 +322,12 @@ bool xAppQMIV::readConfiguration()
   m_UnnoticeableCoef  = xFmtScn::scanFltWeights(UnnoticeableCoefS );
 
   //ssim specific -----------------------------------------------------------------------------------------------------
-  m_StructSimMode = m_CfgParser.cvtParam1stArg("StructSimMode", xSSIM::eMode::BlockAveraged, xSSIM::xStrToMode);
+  m_StructSimMode = m_CfgParser.cvtParam1stArg("StructSimMode", xSSIM::c_DefaultStructSimMode, xSSIM::xStrToMode);
   if(m_StructSimMode == xSSIM::eMode::INVALID) { m_ErrorLog += "!  StructSimMode value is not valid\n"; AnyError = true; }  
-  //m_StructSimBrdExt = m_CfgParser.cvtParam1stArg("StructSimBrdExt", eMrgExt::None, xStr2MrgExt); - not ready jet
-  //if(m_StructSimBrdExt == eMrgExt::INVALID) { m_ErrorLog += "!  StructSimBrdExt value is not valid\n"; AnyError = true; }  - not ready jet
-  m_StructSimStride = m_CfgParser.getParam1stArg("StructSimStride" , 4);  
-  m_StructSimWindow = m_CfgParser.getParam1stArg("StructSimWindow", xSSIM::determineWindowSize(m_StructSimMode, 8));
+  m_StructSimBrdExt = m_CfgParser.cvtParam1stArg("StructSimBrdExt", eMrgExt::None, xStr2MrgExt);
+  if(m_StructSimBrdExt == eMrgExt::INVALID) { m_ErrorLog += "!  StructSimBrdExt value is not valid\n"; AnyError = true; }
+  m_StructSimStride = m_CfgParser.getParam1stArg("StructSimStride" , xSSIM::c_DefaultStructSimStride);
+  m_StructSimWindow = m_CfgParser.getParam1stArg("StructSimWindow", xSSIM::determineWindowSize(m_StructSimMode, xSSIM::c_DefaultStructSimWindow));
   if(m_StructSimStride < 1 || m_StructSimStride > m_StructSimWindow) { m_ErrorLog += "! StructSimStride must be in range 1-StructSimWindow\n"; AnyError = true; }
   if(xSSIM::isRegularMode(m_StructSimMode) && m_StructSimWindow != 11) { m_ErrorLog += "! In regular struct sim mode only StructSimWindow==11 is allowed\n"; AnyError = true; }
 
@@ -338,18 +337,18 @@ bool xAppQMIV::readConfiguration()
 
   //operation ---------------------------------------------------------------------------------------------------------
   m_NumberOfThreads = m_CfgParser.getParam1stArg("NumberOfThreads", -2  );
-  m_InterleavedPic  = m_CfgParser.getParam1stArg("InterleavedPic" , true);
   m_VerboseLevel    = m_CfgParser.getParam1stArg("VerboseLevel"   , 1   );
 
   //derrived ----------------------------------------------------------------------------------------------------------  
-  m_UsePicI      = m_InterleavedPic && getCalcMetric(eMetric::IVPSNR);
   m_NumInputsCur = !m_UseMask ? 2 : 3;
   
   m_CalcPSNRs    = getCalcMetric(eMetric::PSNR) || getCalcMetric(eMetric::WSPSNR) || getCalcMetric(eMetric::IVPSNR);
   m_CalcSSIMs    = getCalcMetric(eMetric::SSIM) || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVMSSSIM);
   m_CalcIVs      = getCalcMetric(eMetric::IVPSNR) || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::IVMSSSIM);
+  m_CalcMSs      = getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVMSSSIM);
   m_CalcSCP      = m_WriteSCP || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::IVMSSSIM);
   m_CalcGCD      = m_CalcIVs || m_CalcSCP;
+  m_UsePicI      = getCalcMetric(eMetric::IVPSNR) || m_CalcSCP || m_UseMask;
 
   m_PicMargin    = xRoundUpToNearestMultiple(m_SearchRange, 2);
   m_WindowSize   = 2 * m_SearchRange + 1;
@@ -361,12 +360,15 @@ bool xAppQMIV::readConfiguration()
   if(m_UseMask && m_CalcSSIMs) { m_ErrorLog += "! Structural Similarity metrics cannot be combined with Mask mode\n"; AnyError = true; }
   if(m_FileFormat != eFileFmt::RAW && m_ColorSpaceInput != eClrSpcApp::RGB) { m_ErrorLog += fmt::format("! Input FileFormat={} contains data in RGB color space whitch conflicts with defined ColorSpaceInput={}\n", xFileFmt2Str(m_FileFormat), xClrSpcApp2Str(m_ColorSpaceInput)); AnyError = true; }
   if(m_FileFormat != eFileFmt::RAW && m_BitDepth != 8) { m_ErrorLog += fmt::format("! Input FileFormat={} contains 8-bit per pixel data whitch conflicts with defined BitDepth={}\n", xFileFmt2Str(m_FileFormat), m_BitDepth); AnyError = true; }
-
+  if(m_UseMask && !xSSIM::isRegularMode(m_StructSimMode)) { m_ErrorLog += "! Mask mode requires regular SSIM mode\n"; AnyError = true; }
+  if(m_UseMask && m_StructSimStride != 1) { m_ErrorLog += "! Mask mode requires StructSimStride=1\n"; AnyError = true; }
+  if(m_UseMask && m_CalcMSs) { m_ErrorLog += "! MS-SSIM and IV-MS-SSIM does not support mask mode\n"; AnyError = true; }
+  
   return !AnyError;
 }
 std::string xAppQMIV::formatConfiguration()
 {
-  std::string Config; Config.reserve(xMemory::c_MemSizePageBase);  
+  std::string Config; Config.reserve(xMemory::getBestEffortSizePageBase());
   //basic io
   Config += "Run-time configuration:\n";
   Config += fmt::format("InputFile0        = {}\n"  , m_InputFile[0]);
@@ -401,6 +403,7 @@ std::string xAppQMIV::formatConfiguration()
   Config += fmt::format("UnnoticeableCoef  = {}{}\n", xFmtScn::formatFltWeights(m_UnnoticeableCoef ), m_UnnoticeableCoef  == xGlobClrDiffPrms      ::c_DefaultUnntcbCoef ? "  (default)" : "  (custom)");
   //ssim specific
   Config += fmt::format("StructSimMode     = {}\n", xSSIM::xModeToStr(m_StructSimMode));
+  Config += fmt::format("StructSimBrdExt   = {}\n", xMrgExt2Str(m_StructSimBrdExt));
   Config += fmt::format("StructSimStride   = {}\n", m_StructSimStride);
   Config += fmt::format("StructSimWindow   = {}\n", m_StructSimWindow);
   //validation 
@@ -408,7 +411,6 @@ std::string xAppQMIV::formatConfiguration()
   Config += fmt::format("NameMismatchActn  = {}\n", xActn2Str(m_NameMismatchActn));
   //operation
   Config += fmt::format("NumberOfThreads   = {}{}\n", m_NumberOfThreads, m_NumberOfThreads == -1 ? "  (all)" : m_NumberOfThreads == -2 ? "  (auto)" : "");
-  Config += fmt::format("InterleavedPic    = {:d}\n", m_InterleavedPic);
   Config += fmt::format("VerboseLevel      = {}\n"  , m_VerboseLevel  );
   Config += "\n";
   //derrived
@@ -419,13 +421,14 @@ std::string xAppQMIV::formatConfiguration()
   Config += "\n";
   //metric description
   Config += fmt::format("Selected metrics:\n");
-  for(int32 m = 0; m < c_MetricsNum; m++) { if(m_CalcMetric[m]) { Config += fmt::format("{:<9} - {}\n", xMetricToStr((eMetric)m), xMetricInfo::Description[m]); } }
+  for(int32 m = 0; m < c_MetricsNum; m++) { if(m_CalcMetric[m]) { Config += fmt::format("{:<9} - {}\n", xMetricToStr((eMetric)m), xMetricInfo::Metrics[m].Description); } }
   Config += "\n";
 
   return Config;
 }
 eAppRes xAppQMIV::validateInputFiles()
 {
+  QMIV_TRACE(2, "");
   bool AnyError = false;
 
   if(m_NameMismatchActn == eActn::WARN || m_NameMismatchActn == eActn::STOP)
@@ -447,6 +450,7 @@ eAppRes xAppQMIV::validateInputFiles()
 }
 std::string xAppQMIV::formatWarnings()
 {
+  QMIV_TRACE(2, "");
   std::string Warnings = "";
 
   //check weights
@@ -472,6 +476,28 @@ std::string xAppQMIV::formatWarnings()
   {
     Warnings += fmt::format("CONFORMANCE WARNING: Software was executed with UnnoticeableCoef different than default one. This leads to result different than expected for MPEG Common Test Conditions defined for immersive video. The default coeffs are DefaultUnnoticeableCoef={}.\n\n", xFmtScn::formatFltWeights(xGlobClrDiffPrms::c_DefaultUnntcbCoef));
   }
+  if(m_StructSimMode != xSSIM::c_DefaultStructSimMode)
+  {
+    Warnings += fmt::format("CONFORMANCE WARNING: Software was executed with StructSimMode different than default one. This leads to result different than expected for MPEG Common Test Conditions defined for immersive video. The default setting is StructSimMode={}.\n\n", xSSIM::xModeToStr(xSSIM::c_DefaultStructSimMode));
+  }
+  if(m_StructSimStride != xSSIM::c_DefaultStructSimStride)
+  {
+    Warnings += fmt::format("CONFORMANCE WARNING: Software was executed with StructSimStride different than default one. This leads to result different than expected for MPEG Common Test Conditions defined for immersive video. The default setting is StructSimStride={}.\n\n", xSSIM::c_DefaultStructSimStride);
+  }
+  if(m_StructSimWindow != xSSIM::c_DefaultStructSimWindow)
+  {
+    Warnings += fmt::format("CONFORMANCE WARNING: Software was executed with StructSimWindow different than default one. This leads to result different than expected for MPEG Common Test Conditions defined for immersive video. The default setting is StructSimWindow={}.\n\n", xSSIM::c_DefaultStructSimWindow);
+  }
+
+  //SSIM notes
+  if((m_StructSimMode != xSSIM::eMode::RegularGaussianFlt && m_StructSimMode != xSSIM::eMode::RegularGaussianInt) || m_StructSimStride != 1)
+  {
+    Warnings += fmt::format("SSIM ALGORITM NOTTICE: ");
+    Warnings += fmt::format("The selected SSIM calculation mode (StructSimMode={}, StructSimStride={}) differs from proposed in original paper (Z. Wang, A.C. Bovik, H.R. Sheikh, E.P. Simoncelli, \"Image quality assessment : from error measurement to structural similarity\", IEEE Trans Image Process, 13 (Apr. 2004), pp. 600 - 613). ", xSSIM::xModeToStr(m_StructSimMode), m_StructSimStride);
+    Warnings += fmt::format("By default, the software uses StructSimMode={}, StructSimStride={}, StructSimWindow={} (similar to approach used by FFMPEG). ", xSSIM::xModeToStr(xSSIM::c_DefaultStructSimMode), xSSIM::c_DefaultStructSimStride, xSSIM::c_DefaultStructSimWindow);
+    Warnings += fmt::format("This change reduces computational complexity while increasing correlation with MOS. ");
+    Warnings += fmt::format("if you want to use the same approach as in original paper, select StructSimMode={}, StructSimStride={}.\n\n", xSSIM::xModeToStr(xSSIM::eMode::RegularGaussianFlt), 1);
+  }
 
   //check performance
   if(m_SearchRange > xCorrespPixelShiftPrms::c_DefaultSearchRange)
@@ -487,10 +513,12 @@ std::string xAppQMIV::formatWarnings()
 }
 void xAppQMIV::setupMultithreading()
 {
+  QMIV_TRACE(2, "");
   m_HardwareConcurency  = std::thread::hardware_concurrency();
 
   int32 PreferedNumberOfThreads = 8;
   if(m_CalcSSIMs && xSSIM::isRegularMode(m_StructSimMode) && m_StructSimStride < 4) { PreferedNumberOfThreads = m_HardwareConcurency; }
+  if((m_CalcSSIMs || m_CalcIVs) && (int64)m_PictureSize.getX() * (int64)m_PictureSize.getX() >= 4096 * 4096) { PreferedNumberOfThreads = m_HardwareConcurency; }
 
   m_NumberOfThreadsUsed = 0;
   if(m_NumberOfThreads >=  1) { m_NumberOfThreadsUsed = xMin(m_NumberOfThreads, m_HardwareConcurency); }
@@ -506,15 +534,17 @@ void xAppQMIV::setupMultithreading()
 }
 void xAppQMIV::ceaseMultithreading()
 {
+  QMIV_TRACE(2, "");
   if(m_NumberOfThreadsUsed)
   {
-    m_TPI.uininit();
+    m_TPI.uninit();
     m_ThreadPool->destroy();
     m_ThreadPool = nullptr;
   }
 }
 std::string xAppQMIV::formatMultithreading()
 {
+  QMIV_TRACE(2, "");
   std::string Info = "";
   Info += fmt::format("Multithreading:\n");
   Info += fmt::format("HardwareConcurency  = {}\n", m_HardwareConcurency );
@@ -526,6 +556,7 @@ std::string xAppQMIV::formatMultithreading()
 
 eAppRes xAppQMIV::setupSeqAndBuffs()
 {
+  QMIV_TRACE(2, "");
   const char  FID[NumInputsMax] = { '0', '1', 'M' };
   const int32 BDs[NumInputsMax] = { m_BitDepth    , m_BitDepth    , m_BitDepthM     };
   const eCrF  CFs[NumInputsMax] = { m_ChromaFormat, m_ChromaFormat, m_ChromaFormatM };
@@ -535,7 +566,7 @@ eAppRes xAppQMIV::setupSeqAndBuffs()
   {
     for(int32 i = 0; i < m_NumInputsCur; i++)
     {
-      if(!xFile::exists(m_InputFile[i])) { xCfgINI::printError(fmt::format("ERROR --> InputFile{} does not exist ({})", FID[i], m_InputFile[i])); return eAppRes::Error; }
+      if(!xFile::exists(m_InputFile[i])) { xErrMsg::printError(fmt::format("ERROR --> InputFile{} does not exist ({})", FID[i], m_InputFile[i])); return eAppRes::Error; }
     }
   }
   else
@@ -544,7 +575,7 @@ eAppRes xAppQMIV::setupSeqAndBuffs()
     {
       std::string InputFile0 = fmt::format(fmt::runtime(m_InputFile[i]), 0);
       std::string InputFile1 = fmt::format(fmt::runtime(m_InputFile[i]), 1);
-      if(!xFile::exists(InputFile0) && !xFile::exists(InputFile1)) { xCfgINI::printError(fmt::format("ERROR --> InputFile{} does not exist ({}) [Checked {} {}]", FID[i], m_InputFile[i], InputFile0, InputFile1)); return eAppRes::Error; }
+      if(!xFile::exists(InputFile0) && !xFile::exists(InputFile1)) { xErrMsg::printError(fmt::format("ERROR --> InputFile{} does not exist ({}) [Checked {} {}]", FID[i], m_InputFile[i], InputFile0, InputFile1)); return eAppRes::Error; }
     }
   }
 
@@ -563,16 +594,16 @@ eAppRes xAppQMIV::setupSeqAndBuffs()
   switch(m_FileFormat)
   {
   case eFileFmt::RAW: for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i] = new xSeq   (m_PictureSize, BDs[i], CFs[i]); } break;
-  case eFileFmt::PNG: for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i] = new xSeqPNG(m_PictureSize, uint16_max    ); } break;
-  case eFileFmt::BMP: for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i] = new xSeqBMP(m_PictureSize, uint16_max    ); } break;
-  default: xCfgINI::printError(fmt::format("ERROR --> unsupported FileFormat ({})", xFileFmt2Str(m_FileFormat))); return eAppRes::Error;
+  case eFileFmt::PNG: for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i] = new xSeqPNG(m_PictureSize, std::numeric_limits<uint16>::max()); } break;
+  case eFileFmt::BMP: for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i] = new xSeqBMP(m_PictureSize, std::numeric_limits<uint16>::max()); } break;
+  default: xErrMsg::printError(fmt::format("ERROR --> unsupported FileFormat ({})", xFileFmt2Str(m_FileFormat))); return eAppRes::Error;
   }
 
   //open input sequences 
   for(int32 i = 0; i < m_NumInputsCur; i++)
   {
-    xSeqBase::tResult Result = m_SeqIn[i]->openFile(m_InputFile[i], xSeq::eMode::Read);
-    if(!Result) { xCfgINI::printError(fmt::format("ERROR --> InputFile opening failure ({}) {}", m_InputFile[i], Result.format())); return eAppRes::Error; }
+    xSeqPic::tResult Result = m_SeqIn[i]->openFile(m_InputFile[i], xSeq::eMode::Read);
+    if(!Result) { xErrMsg::printError(fmt::format("ERROR --> InputFile opening failure ({}) {}", m_InputFile[i], Result.format())); return eAppRes::Error; }
   }
 
   //num of frames per input file
@@ -581,7 +612,7 @@ eAppRes xAppQMIV::setupSeqAndBuffs()
   {
     NumOfFrames[i] = m_SeqIn[i]->getNumOfFrames();
     if(m_VerboseLevel >= 1) { fmt::print("DetectedFrames{}  = {}\n", i, NumOfFrames[i]); }
-    if(m_StartFrame[i] >= NumOfFrames[i]) { xCfgINI::printError(fmt::format("ERROR --> StartFrame{} >= DetectedFrames{} for ({})", FID[i], FID[i], m_InputFile[i])); return eAppRes::Error; }
+    if(m_StartFrame[i] >= NumOfFrames[i]) { xErrMsg::printError(fmt::format("ERROR --> StartFrame{} >= DetectedFrames{} for ({})", FID[i], FID[i], m_InputFile[i])); return eAppRes::Error; }
   }
 
   //num of frames to process
@@ -593,15 +624,15 @@ eAppRes xAppQMIV::setupSeqAndBuffs()
   if(m_VerboseLevel >= 1) { fmt::print("FramesToProcess  = {}\n", m_NumFrames); }
   fmt::print("\n");
 
-  if(m_UseMask && (m_NumFrames > NumOfFrames[2])) { xCfgINI::printError(fmt::format("ERROR --> FramesToProcess > NumOfFramesM")); return eAppRes::Error; }
+  if(m_UseMask && (m_NumFrames > NumOfFrames[2])) { xErrMsg::printError(fmt::format("ERROR --> FramesToProcess > NumOfFramesM")); return eAppRes::Error; }
   
   //seeek sequences 
   for(int32 i = 0; i < m_NumInputsCur; i++)
   { 
     if(FirstFrame[i] != 0) 
     { 
-      xSeqBase::tResult Result = m_SeqIn[i]->seekFrame(FirstFrame[i]);
-      if(!Result) { xCfgINI::printError(fmt::format("ERROR --> InputFile seeking failure ({}) {}", m_InputFile[i], Result.format())); return eAppRes::Error; }
+      xSeqPic::tResult Result = m_SeqIn[i]->seekFrame(FirstFrame[i]);
+      if(!Result) { xErrMsg::printError(fmt::format("ERROR --> InputFile seeking failure ({}) {}", m_InputFile[i], Result.format())); return eAppRes::Error; }
     }
   }
 
@@ -610,12 +641,21 @@ eAppRes xAppQMIV::setupSeqAndBuffs()
   if(m_UsePicI) { for(int32 i = 0; i < NumInputsSeq; i++) { m_PicInI[i].create(m_PictureSize, m_BitDepth, m_PicMargin); } }
 
   //SCP buffers
-  if(m_CalcGCD) { for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCP[i].create(m_PictureSize, m_BitDepth, m_PicMargin); } }
+  if(m_CalcSCP)
+  {
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCP[i].create(m_PictureSize, m_BitDepth, m_PicMargin); }
+    if(m_UsePicI)
+    {
+      for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCI[i].create(m_PictureSize, m_BitDepth, m_PicMargin); }
+    }
+  }
 
   return eAppRes::Good;
 }
 eAppRes xAppQMIV::ceaseSeqAndBuffs()
 {
+  if(m_VerboseLevel >= 9) { fmt::print("#  xAppQMIV::ceaseSeqAndBuffs\n"); std::fflush(stdout); }
+
   //input sequences 
   for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i]->closeFile(); }
   for(int32 i = 0; i < m_NumInputsCur; i++) { m_SeqIn[i]->destroy(); m_SeqIn[i] = nullptr; }
@@ -623,22 +663,36 @@ eAppRes xAppQMIV::ceaseSeqAndBuffs()
   for(int32 i = 0; i < m_NumInputsCur; i++) { m_PicInP[i].destroy  (); }
   if(m_UsePicI) { for(int32 i = 0; i < NumInputsSeq; i++) { m_PicInI[i].destroy(); } }
   //SCP buffers
-  if(m_CalcGCD) { for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCP[i].destroy(); } }
+  if(m_CalcSCP)
+  {
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCP[i].destroy(); }
+    if(m_UsePicI) { for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCI[i].destroy(); } }
+  }
+  //output sequences && buffers
+  if(m_WriteSCP)
+  {
+    for(int32 i = 0; i < NumOutputMax; i++) { m_SeqOut [i].closeFile(); }
+    for(int32 i = 0; i < NumOutputMax; i++) { m_SeqOut [i].destroy  (); }
+    for(int32 i = 0; i < NumOutputMax; i++) { m_PicOutP[i].destroy  (); }
+  }
   return eAppRes::Good;
 }
 void xAppQMIV::createProcessors()
 {  
+  QMIV_TRACE(2, "");
   const int32 PictureWidth  = m_PictureSize.getX();
   const int32 PictureHeight = m_PictureSize.getY();
 
   if(m_CalcGCD)
   {
+    QMIV_TRACE(3, "ProcGCD");
     m_ProcGCD.setUnntcbCoef(m_UnnoticeableCoef);
     m_ProcGCD.bindThrdPoolIntf(&m_TPI);
   }
 
   if(m_CalcSCP)
   {
+    QMIV_TRACE(3, "ProcSCP");
     m_ProcSCP.setSearchRange      (m_SearchRange      );
     m_ProcSCP.setCmpWeightsSearch (m_CmpWeightsSearch );
     m_ProcSCP.setCmpWeightsAverage(m_CmpWeightsAverage);
@@ -647,6 +701,7 @@ void xAppQMIV::createProcessors()
 
   if(m_CalcPSNRs)
   {
+    QMIV_TRACE(3, "ProcPSNR");
     m_ProcPSNR.setSearchRange      (m_SearchRange      );
     m_ProcPSNR.setCmpWeightsSearch (m_CmpWeightsSearch );
     m_ProcPSNR.setCmpWeightsAverage(m_CmpWeightsAverage);
@@ -658,17 +713,19 @@ void xAppQMIV::createProcessors()
 
   if(m_CalcSSIMs)
   {
-    m_ProcSSIM.create(m_PictureSize, m_BitDepth, m_PicMargin, true);
+    QMIV_TRACE(3, "ProcSSIM");
+    m_ProcSSIM.create              (m_PictureSize, m_BitDepth, m_PicMargin, m_CalcMSs);
     m_ProcSSIM.setSearchRange      (m_SearchRange      );
     m_ProcSSIM.setCmpWeightsSearch (m_CmpWeightsSearch );
     m_ProcSSIM.setCmpWeightsAverage(m_CmpWeightsAverage);
     m_ProcSSIM.setUnntcbCoef       (m_UnnoticeableCoef );
-    m_ProcSSIM.setStructSimParams  (m_StructSimMode, false, m_StructSimWindow, m_StructSimStride);
+    m_ProcSSIM.setStructSimParams  (m_StructSimMode, m_StructSimBrdExt, m_StructSimWindow, m_StructSimStride);
     m_ProcSSIM.bindThrdPoolIntf    (&m_TPI             );
     m_ProcSSIM.initRowBuffers(PictureHeight);
     if(m_IsEquirectangular) { m_ProcSSIM.initWS(true, PictureWidth, PictureHeight, m_BitDepth, m_LonRangeDeg, m_LatRangeDeg); }
   }
 
+  QMIV_TRACE(3, "initMetric");
   for(int32 m = 0; m < c_MetricsNum; m++)
   {
     if(m_CalcMetric[m]) 
@@ -687,6 +744,7 @@ void xAppQMIV::createProcessors()
 }
 void xAppQMIV::destroyProcessors()
 {
+  QMIV_TRACE(2, "");
   if(m_CalcSSIMs)
   {
     m_ProcSSIM.destroy();
@@ -697,19 +755,19 @@ void xAppQMIV::destroyProcessors()
 
 eAppRes xAppQMIV::processAllFrames()
 {
+  QMIV_TRACE(2, "");
   m_TimeStamp.sampleBeg();
 
   for(int32 f = 0; f < m_NumFrames; f++)
   {
-    if(m_PrintDebug) { fmt::print("Frame {:08d}  ", f); }
-
     uint64 T0 = m_GatherTime ? xTSC() : 0;
 
     //reading
-    std::vector<xSeqBase::tResult> ReadResult(m_NumInputsCur, xSeqBase::eRetv::Success);
-    for(int32 i = 0; i < m_NumInputsCur; i++) { m_TPI.addWaitingTask([this, &ReadResult, i](int32 /*ThId*/) { ReadResult[i] = m_SeqIn[i]->readFrame(&(m_PicInP[i])); }); }
-    m_TPI.waitUntilTasksFinished(m_NumInputsCur);
-    for(int32 i = 0; i < m_NumInputsCur; i++) { if(!ReadResult[i]) { xCfgINI::printError(fmt::format("ERROR --> InputFile read error ({}) {}", m_InputFile[i], ReadResult[i].format())); return eAppRes::Error; } }
+    QMIV_TRACE(3, "readFrame");
+    std::vector<xSeqPic::tResult> ReadResult(m_NumInputsCur, xSeqPic::eRetv::Success);
+    for(int32 i = 0; i < m_NumInputsCur; i++) { m_TPI.storeTask([this, &ReadResult, i](int32 /*ThId*/) { ReadResult[i] = m_SeqIn[i]->readFrame(&(m_PicInP[i])); }); }
+    m_TPI.executeStoredTasks();
+    for(int32 i = 0; i < m_NumInputsCur; i++) { if(!ReadResult[i]) { xErrMsg::printError(fmt::format("Frame {:08d} ERROR --> InputFile read error ({}) {}", f, m_InputFile[i], ReadResult[i].format())); return eAppRes::Error; } }
     
     uint64 T1 = m_GatherTime ? xTSC() : 0;
 
@@ -721,67 +779,50 @@ eAppRes xAppQMIV::processAllFrames()
     }
 
     uint64 T2 = m_GatherTime ? xTSC() : 0;
-
     preprocessFrames(f); //preprocessing
-
-    uint64 T3 = m_GatherTime ? xTSC() : 0;
-    
-    if(m_CalcGCD)
-    {
-      if(m_UseMask) { m_GCD_R2T = m_ProcGCD.CalcGlobalColorDiffM(&m_PicInP[0], &m_PicInP[1], &m_PicInP[2], m_NumNonMasked); }
-      else          { m_GCD_R2T = m_ProcGCD.CalcGlobalColorDiff (&m_PicInP[0], &m_PicInP[1]                              ); }
-      if(m_PrintDebug) { fmt::print("GCD-R2T {} {} {} {}    ", m_GCD_R2T[0], m_GCD_R2T[1], m_GCD_R2T[2], m_GCD_R2T[3]); }
-    }
-    if(m_PrintDebug) { fmt::print("\n"); }
-
+    uint64 T3 = m_GatherTime ? xTSC() : 0;    
+    rearrangePictures(f);
     uint64 T4 = m_GatherTime ? xTSC() : 0;
-
-    if(m_CalcSCP) { m_ProcSCP.GenShftCompPics(&m_PicSCP[1], &m_PicSCP[0], &m_PicInP[1], &m_PicInP[0], m_GCD_R2T); }
-
+    if(m_CalcGCD) { calcFrameGCD(f); }
     uint64 T5 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::    PSNR)) { calcFrame____PSNR(f); }
-
+    if(m_CalcSCP) { calcFrameSCP(f); }
     uint64 T6 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::  WSPSNR)) { calcFrame__WSPSNR(f); }
-
+    if(getCalcMetric(eMetric::MSE)) { calcFrame_____MSE(f); }
     uint64 T7 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::  IVPSNR)) { calcFrame__IVPSNR(f); }
-
+    if(getCalcMetric(eMetric::PSNR)) { calcFrame____PSNR(f); }
     uint64 T8 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::    SSIM)) { calcFrame____SSIM(f); }
-
+    if(getCalcMetric(eMetric::WSPSNR)) { calcFrame__WSPSNR(f); }
     uint64 T9 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::  MSSSIM)) { calcFrame__MSSSIM(f); }
-
+    if(getCalcMetric(eMetric::IVPSNR)) { calcFrame__IVPSNR(f); }
     uint64 T10 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::  IVSSIM)) { calcFrame__IVSSIM(f); }
-
+    if(m_StructSimBrdExt != eMrgExt::None) { addStructSimMargs(f); }
     uint64 T11 = m_GatherTime ? xTSC() : 0;
-
-    if(getCalcMetric(eMetric::IVMSSSIM)) { calcFrameIVMSSSIM(f); }
-  
+    if(getCalcMetric(eMetric::SSIM)) { calcFrame____SSIM(f); }
     uint64 T12 = m_GatherTime ? xTSC() : 0;
+    if(getCalcMetric(eMetric::MSSSIM)) { calcFrame__MSSSIM(f); }
+    uint64 T13 = m_GatherTime ? xTSC() : 0;
+    if(getCalcMetric(eMetric::IVSSIM)) { calcFrame__IVSSIM(f); }
+    uint64 T14 = m_GatherTime ? xTSC() : 0;
+    if(getCalcMetric(eMetric::IVMSSSIM)) { calcFrameIVMSSSIM(f); }
+    uint64 T15 = m_GatherTime ? xTSC() : 0;
 
     if(m_GatherTime)
     {
-      m_Ticks____Load += (T1 - T0);
-      m_TicksValidate += (T2 - T1);
-      m_Ticks_Preproc += (T3 - T2);
-      m_Ticks_____GCD += (T4 - T3);
-      m_Ticks_____SCP += (T5 - T4);
-      m_MetricData[(int32)eMetric::    PSNR].addTicks(T6  - T5 );
-      m_MetricData[(int32)eMetric::  WSPSNR].addTicks(T7  - T6 );
-      m_MetricData[(int32)eMetric::  IVPSNR].addTicks(T8  - T7 );
-      m_MetricData[(int32)eMetric::    SSIM].addTicks(T9  - T8 );
-      m_MetricData[(int32)eMetric::  MSSSIM].addTicks(T10 - T9 );
-      m_MetricData[(int32)eMetric::  IVSSIM].addTicks(T11 - T10);
-      m_MetricData[(int32)eMetric::IVMSSSIM].addTicks(T12 - T11);
+      m_Ticks____Load +=                             (T1 - T0);
+      m_TicksValidate +=                             (T2 - T1);
+      m_Ticks_Preproc +=                             (T3 - T2);
+      m_Ticks_Arrange +=                             (T4 - T3);
+      m_Ticks_____GCD +=                             (T5 - T4);
+      m_Ticks_____SCP +=                             (T6 - T5);
+      m_MetricData[(int32)eMetric::     MSE].addTicks(T7  - T6 );
+      m_MetricData[(int32)eMetric::    PSNR].addTicks(T8  - T7 );
+      m_MetricData[(int32)eMetric::  WSPSNR].addTicks(T9  - T8 );
+      m_MetricData[(int32)eMetric::  IVPSNR].addTicks(T10 - T9 );
+      m_Ticks__Margin +=                             (T11 - T10);
+      m_MetricData[(int32)eMetric::    SSIM].addTicks(T12 - T11);
+      m_MetricData[(int32)eMetric::  MSSSIM].addTicks(T13 - T12);
+      m_MetricData[(int32)eMetric::  IVSSIM].addTicks(T14 - T13);
+      m_MetricData[(int32)eMetric::IVMSSSIM].addTicks(T15 - T14);
     }
   } //end of loop over frames
 
@@ -790,11 +831,12 @@ eAppRes xAppQMIV::processAllFrames()
   return eAppRes::Good;
 }
 
-eAppRes xAppQMIV::validateFrames(int32 /**/)
+eAppRes xAppQMIV::validateFrames(int32 f)
 {
+  QMIV_TRACE(3, "");
   std::vector<bool> CheckOK(m_NumInputsCur, true);
-  for(int32 i = 0; i < m_NumInputsCur; i++) { m_TPI.addWaitingTask([this, &CheckOK, i](int32) { CheckOK[i] = m_PicInP[i].check(m_InputFile[i]); } ); }
-  m_TPI.waitUntilTasksFinished(m_NumInputsCur);
+  for(int32 i = 0; i < m_NumInputsCur; i++) { m_TPI.storeTask([this, &CheckOK, i](int32) { CheckOK[i] = m_PicInP[i].check(m_InputFile[i]); } ); }
+  m_TPI.executeStoredTasks();
 
   if(m_InvalidPelActn == eActn::CNCL)
   {
@@ -803,33 +845,34 @@ eAppRes xAppQMIV::validateFrames(int32 /**/)
 
   if(m_InvalidPelActn==eActn::STOP)
   {
-    for(int32 i = 0; i < m_NumInputsCur; i++) { if(!CheckOK[i]) { xCfgINI::printError(fmt::format("ERROR --> InputFile contains invalid values ({})", m_InputFile[i])); return eAppRes::Error; } }
+    for(int32 i = 0; i < m_NumInputsCur; i++) { if(!CheckOK[i]) { xErrMsg::printError(fmt::format("Frame {:08d} ERROR --> InputFile contains invalid values ({})", f, m_InputFile[i])); return eAppRes::Error; } }
   }
 
   return eAppRes::Good;
 }
 void xAppQMIV::preprocessFrames(int32 /**/)
 {
+  QMIV_TRACE(3, "");
   if(m_CvtYCbCr2RGB)
   {
     eClrSpcLC ColorSpace = xClrSpcAppToClrSpc(m_ColorSpaceInput);
-    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.addWaitingTask([this, i, ColorSpace](int32) { xColorSpace::ConvertYCbCr2RGB(
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.storeTask([this, i, ColorSpace](int32) { xColorSpace::ConvertYCbCr2RGB(
       m_PicInP[i].getAddr(eCmp::R ), m_PicInP[i].getAddr(eCmp::G ), m_PicInP[i].getAddr(eCmp::B ),
       m_PicInP[i].getAddr(eCmp::LM), m_PicInP[i].getAddr(eCmp::CB), m_PicInP[i].getAddr(eCmp::CR),
       m_PicInP[i].getStride(), m_PicInP[i].getStride(), m_PicInP[i].getWidth(), m_PicInP[i].getHeight(), m_PicInP[i].getBitDepth(), ColorSpace);
     } ); }
-    m_TPI.waitUntilTasksFinished(NumInputsSeq);
+    m_TPI.executeStoredTasks();
   }
 
   if(m_CvtRGB2YCbCr)
   {
     eClrSpcLC ColorSpace = xClrSpcAppToClrSpc(m_ColorSpaceMetric);
-    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.addWaitingTask([this, i, ColorSpace](int32) { xColorSpace::ConvertRGB2YCbCr(
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.storeTask([this, i, ColorSpace](int32) { xColorSpace::ConvertRGB2YCbCr(
       m_PicInP[i].getAddr(eCmp::LM), m_PicInP[i].getAddr(eCmp::CB), m_PicInP[i].getAddr(eCmp::CR),
       m_PicInP[i].getAddr(eCmp::R ), m_PicInP[i].getAddr(eCmp::G ), m_PicInP[i].getAddr(eCmp::B ),      
       m_PicInP[i].getStride(), m_PicInP[i].getStride(), m_PicInP[i].getWidth(), m_PicInP[i].getHeight(), m_PicInP[i].getBitDepth(), ColorSpace);
     } ); }
-    m_TPI.waitUntilTasksFinished(NumInputsSeq);
+    m_TPI.executeStoredTasks();
   }
 
   if(m_ReorderRGB)
@@ -853,14 +896,8 @@ void xAppQMIV::preprocessFrames(int32 /**/)
     m_ExactCmps[CmpIdx] = m_PicInP[0].equalCmp(&m_PicInP[1], (eCmp)CmpIdx);
   }
 
-  for(int32 i = 0; i < m_NumInputsCur; i++) { m_TPI.addWaitingTask([this, i](int32) { m_PicInP[i].extend(); } ); }
-  m_TPI.waitUntilTasksFinished(m_NumInputsCur);
-
-  if(m_UsePicI)
-  {
-    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.addWaitingTask([this, i](int32) { m_PicInI[i].rearrangeFromPlanar(&m_PicInP[i]); } ); }
-    m_TPI.waitUntilTasksFinished(NumInputsSeq);
-  }
+  for(int32 i = 0; i < m_NumInputsCur; i++) { m_TPI.storeTask([this, i](int32) { m_PicInP[i].extend(); } ); }
+  m_TPI.executeStoredTasks();
 
   if(m_UseMask)
   {
@@ -868,9 +905,69 @@ void xAppQMIV::preprocessFrames(int32 /**/)
     if(m_PrintDebug) { fmt::print("NNM {}    ", m_NumNonMasked); }
   }  
 }
+void xAppQMIV::rearrangePictures(int32 /*FrameIdx*/)
+{
+  QMIV_TRACE(3, "");
+  if(m_UsePicI)
+  {
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.storeTask([this, i](int32) { m_PicInI[i].rearrangeFromPlanar(&m_PicInP[i]); }); }
+    //for(int32 i = 0; i < NumInputsSeq; i++) { m_PicInI[i].rearrangeFromPlanar(&m_PicInP[i], &m_TPI, false); }    
+    m_TPI.executeStoredTasks();    
+  }
+}
+void xAppQMIV::addStructSimMargs(int32 /*FrameIdx*/)
+{
+  QMIV_TRACE(3, "");
+  for(int32 i = 0; i < NumInputsSeq; i++) { m_PicInP[i].extend(m_StructSimBrdExt); }
+  if(m_CalcSCP)
+  {
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_PicSCP[i].extend(m_StructSimBrdExt); }
+  }
+}
+void xAppQMIV::calcFrameGCD(int32 FrameIdx)
+{
+  QMIV_TRACE(3, "");
+  if(m_UseMask) { m_GCD_R2T = m_ProcGCD.CalcGlobalColorDiffM(&m_PicInP[0], &m_PicInP[1], &m_PicInP[2], m_NumNonMasked); }
+  else          { m_GCD_R2T = m_ProcGCD.CalcGlobalColorDiff (&m_PicInP[0], &m_PicInP[1]                              ); }
+  if(m_PrintDebug) { fmt::print("Frame {:08d} GCD-R2T {} {} {} {}\n", FrameIdx, m_GCD_R2T[0], m_GCD_R2T[1], m_GCD_R2T[2], m_GCD_R2T[3]); }
+}
+void xAppQMIV::calcFrameSCP(int32 /*FrameIdx*/)
+{
+  QMIV_TRACE(3, "");
+  if(m_InterleavedPic)
+  {
+    if(m_UseMask) { m_ProcSCP.GenShftCompPicsM(&m_PicSCI[1], &m_PicSCI[0], &m_PicInI[1], &m_PicInI[0], &m_PicInP[2], m_GCD_R2T); }
+    else          { m_ProcSCP.GenShftCompPics (&m_PicSCI[1], &m_PicSCI[0], &m_PicInI[1], &m_PicInI[0],               m_GCD_R2T); }
+    for(int32 i = 0; i < NumInputsSeq; i++) { m_TPI.storeTask([this, i](int32) { m_PicSCI[i].rearrangeToPlanar(&m_PicSCP[i]); }); }
+    m_TPI.executeStoredTasks();
+  }
+  else
+  {
+    m_ProcSCP.GenShftCompPics(&m_PicSCP[1], &m_PicSCP[0], &m_PicInP[1], &m_PicInP[0], m_GCD_R2T);
+  }
+}
+void xAppQMIV::calcFrame_____MSE(int32 FrameIdx)
+{
+  QMIV_TRACE(3, "");
+  flt64V4 MSE  = xMakeVec4(0.0);
+  if(m_UseMask) { MSE = m_ProcPSNR.calcPicMSEM(&m_PicInP[0], &m_PicInP[1], &m_PicInP[2], m_NumNonMasked); }
+  else          { MSE = m_ProcPSNR.calcPicMSE (&m_PicInP[0], &m_PicInP[1]                              ); }
+  m_MetricData[(int32)eMetric::MSE].setPerCmpMeric(MSE, FrameIdx);
+
+  if(m_PrintFrame)
+  {
+    std::string Log = fmt::format("Frame {:08d} ", FrameIdx) + m_MetricData[(int32)eMetric::MSE].formatPerCmpMetric(FrameIdx);
+    if(m_ExactCmps[0]) { Log += " ExactY"; } if(m_ExactCmps[1]) { Log += " ExactU"; } if(m_ExactCmps[2]) { Log += " ExactV"; }
+    Log += "\n";
+    Log += fmt::format("Frame {:08d} ", FrameIdx) + m_MetricData[(int32)eMetric::MSE].formatPerPicMetric(FrameIdx);
+    Log += "\n";
+    fmt::print("{}", Log);
+  }
+}
 void xAppQMIV::calcFrame____PSNR(int32 FrameIdx)
 {
-  flt64V4 PSNR  = xMakeVec4(0.0  );
+  QMIV_TRACE(3, "");
+  flt64V4 PSNR  = xMakeVec4(0.0);
   if(m_UseMask) { PSNR = m_ProcPSNR.calcPicPSNRM(&m_PicInP[0], &m_PicInP[1], &m_PicInP[2], m_NumNonMasked); }
   else          { PSNR = m_ProcPSNR.calcPicPSNR (&m_PicInP[0], &m_PicInP[1]                              ); }
 
@@ -896,7 +993,8 @@ void xAppQMIV::calcFrame____PSNR(int32 FrameIdx)
 }
 void xAppQMIV::calcFrame__WSPSNR(int32 FrameIdx)
 {
-  flt64V4 WSPSNR = xMakeVec4(0.0  );
+  QMIV_TRACE(3, "");
+  flt64V4 WSPSNR = xMakeVec4(0.0);
 
   if(m_UseMask) { WSPSNR = m_ProcPSNR.calcPicWSPSNRM(&m_PicInP[0], &m_PicInP[1], &m_PicInP[2], m_NumNonMasked); }
   else          { WSPSNR = m_ProcPSNR.calcPicWSPSNR (&m_PicInP[0], &m_PicInP[1]                              ); }
@@ -923,6 +1021,7 @@ void xAppQMIV::calcFrame__WSPSNR(int32 FrameIdx)
 }
 void xAppQMIV::calcFrame__IVPSNR(int32 FrameIdx)
 {
+  QMIV_TRACE(3, "");
   flt64 IVPSNR = 0.0;
   if(m_UseMask)
   {
@@ -944,7 +1043,10 @@ void xAppQMIV::calcFrame__IVPSNR(int32 FrameIdx)
 }
 void xAppQMIV::calcFrame____SSIM(int32 FrameIdx)
 {
-  flt64V4 SSIM = m_ProcSSIM.calcPicSSIM(&m_PicInP[0], &m_PicInP[1]);
+  QMIV_TRACE(3, "");
+  flt64V4 SSIM = xMakeVec4(0.0);
+  if(m_UseMask){ SSIM = m_ProcSSIM.calcPicSSIMM(&m_PicInP[0], &m_PicInP[1], &m_PicInP[2], m_NumNonMasked); }
+  else         { SSIM = m_ProcSSIM.calcPicSSIM (&m_PicInP[0], &m_PicInP[1]                              ); }
   m_MetricData[(int32)eMetric::SSIM].setPerCmpMeric(SSIM, FrameIdx);
 
   if(m_PrintFrame)
@@ -952,9 +1054,17 @@ void xAppQMIV::calcFrame____SSIM(int32 FrameIdx)
     fmt::print("Frame {:08d} {}\n", FrameIdx, m_MetricData[(int32)eMetric::SSIM].formatPerCmpMetric(FrameIdx));
     fmt::print("Frame {:08d} {}\n", FrameIdx, m_MetricData[(int32)eMetric::SSIM].formatPerPicMetric(FrameIdx));
   }
+
+  if(m_DebugDump)
+  {
+    xPlane<uint16> Vis(m_PictureSize, 8, 0);
+    m_ProcSSIM.visualizeSSIM(&Vis, &m_PicInP[0], &m_PicInP[1], eCmp::C0);
+    xSeq::dumpFrame(&Vis, fmt::format("DUMP_SSIM_{}x{}_8bps.yuv", m_PictureSize.getX(), m_PictureSize.getY()), eCrF::CF420, FrameIdx == 0);
+  }
 }
 void xAppQMIV::calcFrame__MSSSIM(int32 FrameIdx)
 {
+  QMIV_TRACE(3, "");
   flt64V4 MSSSIM = m_ProcSSIM.calcPicMSSSIM(&m_PicInP[0], &m_PicInP[1]);
   m_MetricData[(int32)eMetric::MSSSIM].setPerCmpMeric(MSSSIM, FrameIdx);
 
@@ -963,7 +1073,10 @@ void xAppQMIV::calcFrame__MSSSIM(int32 FrameIdx)
 }
 void xAppQMIV::calcFrame__IVSSIM(int32 FrameIdx)
 {
-  flt64 IVSSIM = m_ProcSSIM.calcPicIVSSIM(&m_PicInP[0], &m_PicInP[1], &m_PicSCP[0], &m_PicSCP[1]);
+  QMIV_TRACE(3, "");
+  flt64 IVSSIM = 0.0;
+  if(m_UseMask) { IVSSIM = m_ProcSSIM.calcPicIVSSIMM(&m_PicInP[0], &m_PicInP[1], &m_PicSCP[0], &m_PicSCP[1], &m_PicInP[2], m_NumNonMasked); }
+  else          { IVSSIM = m_ProcSSIM.calcPicIVSSIM (&m_PicInP[0], &m_PicInP[1], &m_PicSCP[0], &m_PicSCP[1]                              ); }
   m_MetricData[(int32)eMetric::IVSSIM].setPerPicMeric(IVSSIM, FrameIdx);
 
   if(m_PrintFrame)
@@ -972,9 +1085,17 @@ void xAppQMIV::calcFrame__IVSSIM(int32 FrameIdx)
     if(m_PrintDebug) { Log += fmt::format("    R2T {:7.4f}  T2R {:7.4f}", m_LastR2T, m_LastT2R); }
     fmt::print("{}\n", Log);
   }
+
+  if(m_DebugDump)
+  {
+    xPlane<uint16> Vis(m_PictureSize, 8, 0);
+    m_ProcSSIM.visualizeIVSSIM(&Vis, &m_PicInP[0], &m_PicInP[1], &m_PicSCP[0], &m_PicSCP[1], eCmp::C0);
+    xSeq::dumpFrame(&Vis, fmt::format("DUMP_IVSSIM_{}x{}_8bps.yuv", m_PictureSize.getX(), m_PictureSize.getY()), eCrF::CF420, FrameIdx == 0);
+  }
 }
 void xAppQMIV::calcFrameIVMSSSIM(int32 FrameIdx)
 {
+  QMIV_TRACE(3, "");
   flt64 IVMSSSIM = m_ProcSSIM.calcPicIVMSSSIM(&m_PicInP[0], &m_PicInP[1], &m_PicSCP[0], &m_PicSCP[1]);
   m_MetricData[(int32)eMetric::IVMSSSIM].setPerPicMeric(IVMSSSIM, FrameIdx);
 
@@ -990,6 +1111,7 @@ void xAppQMIV::calcFrameIVMSSSIM(int32 FrameIdx)
 
 std::string xAppQMIV::calibrateTimeStamp()
 {
+  QMIV_TRACE(2, "");
   m_TimeStamp.calibrateTimeStamp();
   m_InvDurationDenominator = (flt64)1.0 / ((flt64)m_NumFrames * m_TimeStamp.getTicksPerMiliSec());
   return m_TimeStamp.formatCalibration();
@@ -1008,9 +1130,10 @@ void xAppQMIV::combineFrameStats()
 }
 std::string xAppQMIV::formatResultsFile()
 {
+  QMIV_TRACE(2, "");
   std::time_t TimeStamp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-  std::string Result; Result.reserve(xMemory::c_MemSizePageBase);
+  std::string Result; Result.reserve(xMemory::getBestEffortSizePageBase());
   
   Result += fmt::format("FILE0  \"{}\"\n", m_InputFile[0]);
   Result += fmt::format("FILE1  \"{}\"\n", m_InputFile[1]);
@@ -1027,7 +1150,8 @@ std::string xAppQMIV::formatResultsFile()
 }
 std::string xAppQMIV::formatResultsStdOut()
 {
-  std::string Result; Result.reserve(xMemory::c_MemSizePageBase);
+  QMIV_TRACE(2, "");
+  std::string Result; Result.reserve(xMemory::getBestEffortSizePageBase());
 
   for(int32 m = 0; m < c_MetricsNum; m++)
   {
@@ -1040,35 +1164,54 @@ std::string xAppQMIV::formatResultsStdOut()
     tDurationMS AvgDuration____Load = tDurationMS((flt64)m_Ticks____Load * m_InvDurationDenominator);
     tDurationMS AvgDurationValidate = tDurationMS((flt64)m_TicksValidate * m_InvDurationDenominator);
     tDurationMS AvgDuration_Preproc = tDurationMS((flt64)m_Ticks_Preproc * m_InvDurationDenominator);
+    tDurationMS AvgDuration_Arrange = tDurationMS((flt64)m_Ticks_Arrange * m_InvDurationDenominator);
+    tDurationMS AvgDuration__Margin = tDurationMS((flt64)m_Ticks__Margin * m_InvDurationDenominator);
     tDurationMS AvgDuration_____GCD = tDurationMS((flt64)m_Ticks_____GCD * m_InvDurationDenominator);
-    tDurationMS AvgDuration_____SCP = tDurationMS((flt64)m_Ticks_____SCP * m_InvDurationDenominator);
+    tDurationMS AvgDuration_____SCP = tDurationMS((flt64)m_Ticks_____SCP * m_InvDurationDenominator);    
 
     Result += "\n";
     Result += fmt::format("AvgTime          LOAD {:9.2f} ms\n", AvgDuration____Load.count());
     Result += fmt::format("AvgTime      VALIDATE {:9.2f} ms\n", AvgDurationValidate.count());
     Result += fmt::format("AvgTime       PREPROC {:9.2f} ms\n", AvgDuration_Preproc.count());
+    if(m_UsePicI) { Result += fmt::format("AvgTime     Rearrange {:9.2f} ms\n", AvgDuration_Arrange.count()); }
     if(m_CalcGCD) { Result += fmt::format("AvgTime           GCD {:9.2f} ms\n", AvgDuration_____GCD.count()); }
     if(m_CalcSCP) { Result += fmt::format("AvgTime           SCP {:9.2f} ms\n", AvgDuration_____SCP.count()); }
-
+    if(m_StructSimBrdExt != eMrgExt::None) { Result += fmt::format("AvgTime        Margin {:9.2f} ms\n", AvgDuration__Margin.count()); }
+    
     for(int32 m = 0; m < c_MetricsNum; m++)
     {
       xMetricStat& MD = m_MetricData[m];
       if(MD.getEnabled())
       { 
         tDurationMS PreMetricOps = AvgDuration_Preproc;
+        
         switch(MD.getMetric())
         {
           case eMetric::    PSNR: break;
           case eMetric::  WSPSNR: break;
-          case eMetric::  IVPSNR: PreMetricOps += AvgDuration_____GCD; break;
-          case eMetric::    SSIM: break;
-          case eMetric::  MSSSIM: break;
-          case eMetric::  IVSSIM: PreMetricOps += AvgDuration_____GCD + AvgDuration_____SCP; break;
-          case eMetric::IVMSSSIM: PreMetricOps += AvgDuration_____GCD + AvgDuration_____SCP; break;
+          case eMetric::  IVPSNR: PreMetricOps += AvgDuration_Arrange + AvgDuration_____GCD; break;
+          case eMetric::    SSIM: PreMetricOps += AvgDuration__Margin; break;
+          case eMetric::  MSSSIM: PreMetricOps += AvgDuration__Margin; break;
+          case eMetric::  IVSSIM: PreMetricOps += AvgDuration_Arrange + AvgDuration_____GCD + AvgDuration_____SCP + AvgDuration__Margin; break;
+          case eMetric::IVMSSSIM: PreMetricOps += AvgDuration_Arrange + AvgDuration_____GCD + AvgDuration_____SCP + AvgDuration__Margin; break;
           default: break;
         }
 
-        Result += MD.formatAvgTime("AvgTime      ", PreMetricOps) + "\n";
+        std::string PreMetricStr = "PREPROC";
+        switch(MD.getMetric())
+        {
+          case eMetric::    PSNR: break;
+          case eMetric::  WSPSNR: break;
+          case eMetric::  IVPSNR: PreMetricStr += " Rearrange GCD"; break;
+          case eMetric::    SSIM: PreMetricStr += " Margin"     ; break;
+          case eMetric::  MSSSIM: PreMetricStr += " Margin"     ; break;
+          case eMetric::  IVSSIM: PreMetricStr += " Rearrange GCD SCP Margin"; break;
+          case eMetric::IVMSSSIM: PreMetricStr += " Rearrange GCD SCP Margin"; break;
+          default: break;
+        }
+
+
+        Result += MD.formatAvgTime("AvgTime      ", PreMetricOps) + "   (Total includes = [" + PreMetricStr + "]\n";
       }
     }
   }

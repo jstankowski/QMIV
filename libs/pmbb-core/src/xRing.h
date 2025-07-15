@@ -105,7 +105,7 @@ template <class XXX> void xPtrRing<XXX>::insertWait(XXX** Data, int32 NumProvide
     }
     NumEnqueued += NumToEnqueue;
     LockManager.unlock();
-    m_RemoveConditionVariable.notify_one();
+    m_RemoveConditionVariable.notify_all();
   }
 }
 template <class XXX> XXX* xPtrRing<XXX>::removeWait()
@@ -141,7 +141,7 @@ template <class XXX> void xPtrRing<XXX>::removeWait(XXX** Data, int32 NumExpecte
     }
   }
   LockManager.unlock();
-  m_InsertConditionVariable.notify_one();
+  m_InsertConditionVariable.notify_all();
 }
 
 //=============================================================================================================================================================================

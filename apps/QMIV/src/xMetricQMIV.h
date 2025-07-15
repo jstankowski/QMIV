@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 #pragma once
@@ -15,7 +15,8 @@ enum class eMetric : int32 //values must start from 0 and be continous
 {
   UNDEFINED = -1,
   //PSNR - based
-      PSNR  = 0,
+       MSE,
+      PSNR,
     WSPSNR,
     IVPSNR,
   //SSIM - based
@@ -24,7 +25,7 @@ enum class eMetric : int32 //values must start from 0 and be continous
     IVSSIM,
   IVMSSSIM,
   //must be after last metric
-  __NUM  
+     __NUM  
 };
 
 eMetric     xStrToMetric(const std::string_view Metric);
@@ -32,25 +33,36 @@ std::string xMetricToStr(eMetric Metric);
 
 //===============================================================================================================================================================================================================
 
+struct xMetricDescr
+{
+  const eMetric          Metric      ;
+  const bool             IsDefault   ;               
+  const bool             IsPerCmp    ;
+  const bool             IsPerPic    ;
+  const bool             IsNormalized;
+  const std::string_view Unit        ;
+  const std::string_view Description ;
+
+  constexpr xMetricDescr(eMetric Metric_, bool IsDefault_, bool IsPerCmp_, bool IsPerPic_, bool IsNormalized_, std::string_view Unit_, std::string_view Description_)
+    : Metric(Metric_), IsDefault(IsDefault_), IsPerCmp(IsPerCmp_), IsPerPic(IsPerPic_), IsNormalized(IsNormalized_), Unit(Unit_), Description(Description_) {}
+};
+
 struct xMetricInfo
 {
   static constexpr int32 MetricsNum       = (int32)eMetric::__NUM;
   static constexpr int32 MaxMetricNameLen = 8;
 
-                                                          //     PSNR   WSPSNR IVPSNR SSIM   MSSSIM IVSSIM IVMSSSIM
-  static constexpr bool             IsPerCmp    [MetricsNum] = { true , true , false, true , true , false, false };
-  static constexpr bool             IsPerPic    [MetricsNum] = { false, false, true , false, false, true , true  };
-  static constexpr bool             IsNormalized[MetricsNum] = { false, false, false, true , true , true , true  };
-  static constexpr std::string_view Unit        [MetricsNum] = { "dB" , "dB" , "dB" , "  " , "  " , "  " , "  "  };
-  static constexpr std::string_view Description [MetricsNum] =
+  static constexpr xMetricDescr Metrics[(int32)eMetric::__NUM] =
   {
-    "Peak Signal-to-Noise Ratio",
-    "Spherical Weighted - Peak Signal-to-Noise Ratio",
-    "Immersive Video - Peak Signal-to-Noise Ratio",
-    "Structural Similarity Index Measure",
-    "Multi Scale Structural Similarity Index Measure",
-    "Immersive Video - Structural Similarity Index Measure",
-    "Immersive Video - Multi Scale Structural Similarity Index Measure (experimental)"
+    //           Metric  D  C  P  N  Unit  Description
+    { eMetric::     MSE, 0, 1, 0, 0, "  ", "Mean squared error"                                                              },
+    { eMetric::    PSNR, 1, 1, 0, 0, "dB", "Peak Signal-to-Noise Ratio"                                                      },
+    { eMetric::  WSPSNR, 0, 1, 0, 0, "dB", "Spherical Weighted - Peak Signal-to-Noise Ratio"                                 },
+    { eMetric::  IVPSNR, 1, 0, 1, 0, "dB", "Immersive Video - Peak Signal-to-Noise Ratio"                                    },
+    { eMetric::    SSIM, 0, 1, 0, 1, "  ", "Structural Similarity Index Measure"                                             },
+    { eMetric::  MSSSIM, 0, 1, 0, 1, "  ", "Multi Scale Structural Similarity Index Measure"                                 },
+    { eMetric::  IVSSIM, 1, 0, 1, 1, "  ", "Immersive Video - Structural Similarity Index Measure"                           },
+    { eMetric::IVMSSSIM, 0, 0, 1, 1, "  ", "Immersive Video - Multi Scale Structural Similarity Index Measure"               },
   };
 };
 

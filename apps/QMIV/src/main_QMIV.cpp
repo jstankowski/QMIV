@@ -13,6 +13,7 @@
 #include "xIVPSNR.h"
 #include "xSSIM.h"
 #include "xCfgINI.h"
+#include "xErrMsg.h"
 #include "xFmtScn.h"
 #include "xMemory.h"
 #include "xMiscUtilsCORE.h"
@@ -49,9 +50,9 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //parsing configuration
   AppQMIV.registerCmdParams();
   bool CfgLoadResult = AppQMIV.loadConfiguration(argc, const_cast<const char**>(argv));
-  if(!CfgLoadResult) { xCfgINI::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
+  if(!CfgLoadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
   bool CfgReadResult = AppQMIV.readConfiguration();
-  if(!CfgReadResult) { xCfgINI::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
+  if(!CfgReadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
   const int32 VerboseLevel = AppQMIV.getVerboseLevel();
 
   if(VerboseLevel >= 2)
@@ -68,13 +69,18 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
     fmt::print("\n");
   }
 
+  if(VerboseLevel >= 2)
+  {
+    fmt::print("{}\n", xMiscUtilsCORE::formatBuildInfo());
+  }
+
   //print config
   if(VerboseLevel >= 1) { fmt::print("{}\n", AppQMIV.formatConfiguration()); }
 
   //validate file names against input parameters
   eAppRes ValidFilesRes = AppQMIV.validateInputFiles();
-  if(ValidFilesRes == eAppRes::Warning) { xCfgINI::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); }
-  if(ValidFilesRes == eAppRes::Error  ) { xCfgINI::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); return EXIT_FAILURE; }
+  if(ValidFilesRes == eAppRes::Warning) { xErrMsg::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); }
+  if(ValidFilesRes == eAppRes::Error  ) { xErrMsg::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); return EXIT_FAILURE; }
 
   //print configuration warnings
   std::string ConfigWarnings = AppQMIV.formatWarnings();

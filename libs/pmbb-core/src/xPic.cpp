@@ -1,11 +1,13 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #include "xPic.h"
 #include "xMemory.h"
+#include "xErrMsg.h"
 #include "xPixelOps.h"
+#include "xMarginOps.h"
 #include <cassert>
 #include <cstring>
 
@@ -25,6 +27,7 @@ void xPicP::create(int32V2 Size, int32 BitDepth, int32 Margin)
   {
     m_Buffer[c] = (uint16*)xMemory::xAlignedMallocPageAuto(m_BuffCmpNumBytes);
     m_Origin[c] = m_Buffer[c] + (m_Margin * m_Stride) + m_Margin;
+    if(m_Buffer[c] == nullptr) { xErrMsg::printError(fmt::format("TERRIBLE ERROR --> memory allocation failed in xPicP::create while using xMemory::xAlignedMallocPageAuto({})", m_BuffCmpNumBytes)); abort(); }
   }  
 }
 void xPicP::destroy()
@@ -88,9 +91,12 @@ void xPicP::conceal()
   }
   m_IsMarginExtended = false;
 }
-void xPicP::extend()
+void xPicP::extend(eMrgExt MarginExtendMode)
 {
-  for(int32 c = 0; c < m_NumCmps; c++) { xPixelOps::ExtendMargin(m_Origin[c], m_Stride, m_Width, m_Height, m_Margin); }
+  for(int32 c = 0; c < m_NumCmps; c++)
+  {
+    xMarginOps::ExtendMargin(m_Origin[c], m_Stride, m_Width, m_Height, m_Margin, std::numeric_limits<uint16>::max(), MarginExtendMode);
+  }
   m_IsMarginExtended = true;
 }
 
@@ -164,6 +170,39 @@ bool xPicP::swapComponents(eCmp CmpIdA, eCmp CmpIdB)
 }
 
 //===============================================================================================================================================================================================================
+// xPicPlanarRental - planar
+//===============================================================================================================================================================================================================
+void xPicPlanarRental::create(int32V2 Size, int32 BitDepth, int32 Margin, uintSize InitSize, uintSize SizeLimit)
+{
+  m_Mutex.lock();
+  m_Size         = Size;
+  m_BitDepth     = BitDepth;
+  m_Margin       = Margin;  
+  m_CreatedUnits = 0;
+  m_SizeLimit    = SizeLimit;
+
+  for(uintSize i=0; i<InitSize; i++) { xCreateNewUnit(); }
+  m_Mutex.unlock();
+}
+void xPicPlanarRental::xCreateNewUnit()
+{
+  xPicP* Tmp = new xPicP;
+  Tmp->create(m_Size, m_BitDepth, m_Margin);
+  m_Buffer.push_back(Tmp);
+  m_CreatedUnits++;
+}
+void xPicPlanarRental::xDestroyUnit()
+{
+  if(!m_Buffer.empty())
+  {
+    xPicP* Tmp = (xPicP*)m_Buffer.back();
+    m_Buffer.pop_back();
+    Tmp->destroy();
+    delete Tmp;
+  }
+}
+
+//===============================================================================================================================================================================================================
 // xPicI
 //===============================================================================================================================================================================================================
 void xPicI::create(int32V2 Size, int32 BitDepth, int32 Margin)
@@ -172,6 +211,7 @@ void xPicI::create(int32V2 Size, int32 BitDepth, int32 Margin)
 
   m_Buffer = (uint16*)xMemory::xAlignedMallocPageAuto(m_BuffCmpNumBytes * c_MaxNumCmps);
   m_Origin = m_Buffer + (m_Margin * (m_Stride << 2)) + (m_Margin << 2);
+  if(m_Buffer == nullptr) { xErrMsg::printError(fmt::format("TERRIBLE ERROR --> memory allocation failed in xPicI::create while using xMemory::xAlignedMallocPageAuto({})", m_BuffCmpNumBytes * c_MaxNumCmps)); abort(); }
 }
 void xPicI::destroy()
 {
@@ -211,6 +251,32 @@ void xPicI::rearrangeToPlanar(xPicP* Planar)
   const int32 ExtWidth  = m_Width  + (m_Margin << 1);
   const int32 ExtHeight = m_Height + (m_Margin << 1);
   xPixelOps::SOA3fromAOS4(Planar->getBuffer(eCmp::C0), Planar->getBuffer(eCmp::C1), Planar->getBuffer(eCmp::C2), m_Buffer, Planar->getStride(), m_Stride * c_MaxNumCmps, ExtWidth, ExtHeight);
+}
+void xPicI::rearrangeFromPlanar(const xPicP* Planar, tThPI* TPI, bool ExecuteStoredTasks)
+{
+  assert(isCompatible(Planar));
+  constexpr int32 c_NumRowsInRng = 64;
+  const int32 ExtWidth  = m_Width  + (m_Margin << 1);
+  const int32 ExtHeight = m_Height + (m_Margin << 1);
+
+  for(int32 y = 0; y < ExtHeight; y += c_NumRowsInRng)
+  {
+    TPI->storeTask([this, Planar, ExtWidth, ExtHeight, y, c_NumRowsInRng](int32 /*ThreadIdx*/) //cannot capture by reference since executeStoredTasks can be executed outside function
+      {
+        uint16*       DstPtr    = m_Buffer                    + y * m_Stride * c_MaxNumCmps;
+        const int32   SrcStride = Planar->getStride();
+        const uint16* SrcPtrA   = Planar->getBuffer(eCmp::C0) + y * SrcStride;
+        const uint16* SrcPtrB   = Planar->getBuffer(eCmp::C1) + y * SrcStride;
+        const uint16* SrcPtrC   = Planar->getBuffer(eCmp::C2) + y * SrcStride;
+        const int32   Height    = xMin(y + c_NumRowsInRng, ExtHeight) - y;
+        xPixelOps::AOS4fromSOA3(DstPtr, SrcPtrA, SrcPtrB, SrcPtrC, 0, m_Stride * c_MaxNumCmps, SrcStride, ExtWidth, Height);
+      });
+  }
+  if(ExecuteStoredTasks) { TPI->executeStoredTasks(); }
+}
+void xPicI::rearrangeToPlanar(xPicP* /*Planar*/, tThPI* /*TPI*/, bool /*ExecuteStoredTasks*/)
+{
+
 }
 
 //===============================================================================================================================================================================================================

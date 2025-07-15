@@ -26,26 +26,31 @@ eClrSpcApp xStr2ClrSpcApp(const std::string& ClrSpc)
 }
 std::string xClrSpcApp2Str(eClrSpcApp ClrSpc)
 {
-  return ClrSpc==eClrSpcApp::RGB             ? "RGB"             :
-         ClrSpc==eClrSpcApp::BGR             ? "BGR"             :
-         ClrSpc==eClrSpcApp::GBR             ? "GBR"             :
-         ClrSpc==eClrSpcApp::YCbCr           ? "YCbCr"           :
-         ClrSpc==eClrSpcApp::YCbCr_BT601     ? "YCbCr_BT601"     :
-         ClrSpc==eClrSpcApp::YCbCr_SMPTE170M ? "YCbCr_SMPTE170M" :
-         ClrSpc==eClrSpcApp::YCbCr_BT709     ? "YCbCr_BT709"     :
-         ClrSpc==eClrSpcApp::YCbCr_SMPTE240M ? "YCbCr_SMPTE240M" :
-         ClrSpc==eClrSpcApp::YCbCr_BT2020    ? "YCbCr_BT2020"    :
-                                               "INVALID"         ;
+  switch(ClrSpc)
+  {
+   case eClrSpcApp::RGB             : return "RGB"             ;
+   case eClrSpcApp::BGR             : return "BGR"             ;
+   case eClrSpcApp::GBR             : return "GBR"             ;
+   case eClrSpcApp::YCbCr           : return "YCbCr"           ;
+   case eClrSpcApp::YCbCr_BT601     : return "YCbCr_BT601"     ;
+   case eClrSpcApp::YCbCr_SMPTE170M : return "YCbCr_SMPTE170M" ;
+   case eClrSpcApp::YCbCr_BT709     : return "YCbCr_BT709"     ;
+   case eClrSpcApp::YCbCr_SMPTE240M : return "YCbCr_SMPTE240M" ;
+   case eClrSpcApp::YCbCr_BT2020    : return "YCbCr_BT2020"    ;
+   default                          : return "INVALID"         ;
+  }
 }
-
 eClrSpcLC xClrSpcAppToClrSpc(eClrSpcApp ClrSpcApp)
 {
-  return ClrSpcApp==eClrSpcApp::YCbCr_BT601     ? eClrSpcLC::BT601     :
-         ClrSpcApp==eClrSpcApp::YCbCr_SMPTE170M ? eClrSpcLC::SMPTE170M :
-         ClrSpcApp==eClrSpcApp::YCbCr_BT709     ? eClrSpcLC::BT709     :
-         ClrSpcApp==eClrSpcApp::YCbCr_SMPTE240M ? eClrSpcLC::SMPTE240M :
-         ClrSpcApp==eClrSpcApp::YCbCr_BT2020    ? eClrSpcLC::BT2020    :
-                                                  eClrSpcLC::INVALID   ;
+  switch(ClrSpcApp)
+  {
+  case eClrSpcApp::YCbCr_BT601    : return eClrSpcLC::BT601    ;
+  case eClrSpcApp::YCbCr_SMPTE170M: return eClrSpcLC::SMPTE170M;
+  case eClrSpcApp::YCbCr_BT709    : return eClrSpcLC::BT709    ;
+  case eClrSpcApp::YCbCr_SMPTE240M: return eClrSpcLC::SMPTE240M;
+  case eClrSpcApp::YCbCr_BT2020   : return eClrSpcLC::BT2020   ;
+  default                         : return eClrSpcLC::INVALID  ; 
+  }
 }
 
 //===============================================================================================================================================================================================================

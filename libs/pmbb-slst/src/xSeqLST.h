@@ -12,7 +12,7 @@ namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
 
-class xSeqImgList : public xSeqBase
+class xSeqImgList : public xSeqPic
 {
 public:
   static constexpr int32 c_DefaultMaxNumFiles = std::numeric_limits<int32>::max() - 1;

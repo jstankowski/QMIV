@@ -7,7 +7,7 @@
 #include "xFile.h"
 #include "xSeq.h"
 #include "xIVPSNR.h"
-#include "xSSIM.h"
+#include "xIVSSIM.h"
 #include "xCfgINI.h"
 #include "xFmtScn.h"
 #include "xMemory.h"
@@ -77,7 +77,7 @@ public:
   flt32V4     m_UnnoticeableCoef ;
   //ssim specific
   xSSIM::eMode m_StructSimMode  ;
-  //eMrgExt      m_StructSimBrdExt;  - not ready jet
+  eMrgExt      m_StructSimBrdExt;
   int32        m_StructSimStride;
   int32        m_StructSimWindow;
   //validation 
@@ -85,8 +85,9 @@ public:
   eActn       m_NameMismatchActn;
   //operation
   int32       m_NumberOfThreads;
-  bool        m_InterleavedPic;
   int32       m_VerboseLevel;
+  bool        m_InterleavedPic = true ;
+  bool        m_DebugDump      = false;
   //derrived
   bool        m_UseMask;
   bool        m_FileFormatRGB;
@@ -94,14 +95,15 @@ public:
   bool        m_CvtRGB2YCbCr;
   bool        m_ReorderRGB;
   bool        m_InputRGB;  
-  bool        m_UsePicI;
   int32       m_NumInputsCur;  
   bool        m_WriteSCP;
   bool        m_CalcPSNRs;
   bool        m_CalcSSIMs;
   bool        m_CalcIVs;
+  bool        m_CalcMSs;
   bool        m_CalcGCD;
   bool        m_CalcSCP;
+  bool        m_UsePicI;
   int32       m_PicMargin;
   int32       m_WindowSize;
   bool        m_PrintFrame;
@@ -120,12 +122,13 @@ protected:
   int32 m_NumFrames = 0;
 
   //sequences and buffers
-  std::array<xSeqBase*, NumInputsMax> m_SeqIn  ; //0=Tst,1=Ref,2=Msk
-  std::array<xPicP    , NumInputsMax> m_PicInP ; //0=Tst,1=Ref,2=Msk
-  std::array<xPicI    , NumInputsSeq> m_PicInI ; //0=Tst,1=Ref
-  std::array<xPicP    , NumInputsSeq> m_PicSCP ; //0=Tst,1=Ref
-  std::array<xPicP    , NumOutputMax> m_PicOutP; //0=Tst,1=Ref 
-  std::array<xSeq     , NumInputsMax> m_SeqOut ; //0=Tst,1=Ref,2=Msk
+  std::array<xSeqPic*, NumInputsMax> m_SeqIn  ; //0=Tst,1=Ref,2=Msk
+  std::array<xPicP   , NumInputsMax> m_PicInP ; //0=Tst,1=Ref,2=Msk
+  std::array<xPicI   , NumInputsSeq> m_PicInI ; //0=Tst,1=Ref
+  std::array<xPicP   , NumInputsSeq> m_PicSCP ; //0=Tst,1=Ref
+  std::array<xPicI   , NumInputsSeq> m_PicSCI ; //0=Tst,1=Ref
+  std::array<xPicP   , NumOutputMax> m_PicOutP; //0=Tst,1=Ref 
+  std::array<xSeq    , NumInputsMax> m_SeqOut ; //0=Tst,1=Ref,2=Msk
 
   //processors
   xGlobClrDiffProc m_ProcGCD;
@@ -151,6 +154,8 @@ protected:
   uint64 m_Ticks____Load = 0;
   uint64 m_TicksValidate = 0;
   uint64 m_Ticks_Preproc = 0;
+  uint64 m_Ticks_Arrange = 0;
+  uint64 m_Ticks__Margin = 0;
   uint64 m_Ticks_____GCD = 0;
   uint64 m_Ticks_____SCP = 0;
 
@@ -179,6 +184,11 @@ public:
 
   eAppRes     validateFrames   (int32 FrameIdx);
   void        preprocessFrames (int32 FrameIdx);
+  void        rearrangePictures(int32 FrameIdx);
+  void        addStructSimMargs(int32 FrameIdx);
+  void        calcFrameGCD     (int32 FrameIdx);
+  void        calcFrameSCP     (int32 FrameIdx);
+  void        calcFrame_____MSE(int32 FrameIdx);
   void        calcFrame____PSNR(int32 FrameIdx);
   void        calcFrame__WSPSNR(int32 FrameIdx);
   void        calcFrame__IVPSNR(int32 FrameIdx);
@@ -199,6 +209,21 @@ public:
 
   bool getCalcMetric(eMetric Metric) const { return m_CalcMetric[(int32)Metric]; }
 };
+
+//===============================================================================================================================================================================================================
+// QMIV trace
+//===============================================================================================================================================================================================================
+static inline void x_QMIV_TRACE_FUN(const std::string& Function, int32 Level, const std::string& Description)
+{
+  std::string LevelPrefix; for(int32 i = 0; i < (Level); i++) { LevelPrefix += " "; }
+  fmt::print("#{}{} --> {}\n", LevelPrefix, Function, Description); std::fflush(stdout);
+}
+
+#if X_PMBB_CPP20
+#  define QMIV_TRACE(Level, Description) { if(m_VerboseLevel >= 9) { x_QMIV_TRACE_FUN(std::source_location::function_name(), (Level), Description); } }
+#else //X_PMBB_CPP20
+#  define QMIV_TRACE(Level, Description) { if(m_VerboseLevel >= 9) { x_QMIV_TRACE_FUN(__func__, (Level), Description); } }
+#endif //X_PMBB_CPP20
 
 //===============================================================================================================================================================================================================
 

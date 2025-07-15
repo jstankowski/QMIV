@@ -8,6 +8,7 @@
 #include "spng.h"
 #include "xBMP.h"
 #include "xMemory.h"
+#include "xErrMsg.h"
 
 namespace PMBB_NAMESPACE {
 
@@ -34,6 +35,7 @@ void xSeqImgList::create(int32V2 Size, int32 MaxNumFiles)
   }
 
   m_Packed = (uint8*)xMemory::xAlignedMallocPageAuto(m_PackedImgNumBytes);
+  if(m_Packed == nullptr) { xErrMsg::printError(fmt::format("TERRIBLE ERROR --> memory allocation failed in xSeqImgList::create while using xMemory::xAlignedMallocPageAuto({})", m_PackedImgNumBytes)); abort(); }
 
   m_MaxNumFiles = MaxNumFiles;
   m_SingleFile  = false;
@@ -55,7 +57,7 @@ void xSeqImgList::destroy()
   m_MaxNumFiles = NOT_VALID;
   m_SingleFile  = false;
 }
-xSeqBase::tResult xSeqImgList::xBackendOpen(tCSR FileNamePattern, eMode OpMode)
+xSeqCommon::tResult xSeqImgList::xBackendOpen(tCSR FileNamePattern, eMode OpMode)
 {
   m_FileNamePattern = FileNamePattern;
 
@@ -68,7 +70,7 @@ xSeqBase::tResult xSeqImgList::xBackendOpen(tCSR FileNamePattern, eMode OpMode)
   default: return eRetv::NotImplemented; break;
   }
 }
-xSeqBase::tResult xSeqImgList::xBackendClose()
+xSeqCommon::tResult xSeqImgList::xBackendClose()
 {
   m_OpMode = eMode::Unknown;
 
@@ -77,17 +79,17 @@ xSeqBase::tResult xSeqImgList::xBackendClose()
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqImgList::xBackendRead(uint8* PackedFrame)
+xSeqCommon::tResult xSeqImgList::xBackendRead(uint8* PackedFrame)
 {
   if(m_SingleFile && m_CurrFrameIdx > 0) { return { eRetv::Error, fmt::format("Attempt to read multiple times from single file File={}", m_FileNamePattern) }; }
   return xImgListFileRead(PackedFrame);
 }
-xSeqBase::tResult xSeqImgList::xBackendWrite(const uint8* PackedFrame)
+xSeqCommon::tResult xSeqImgList::xBackendWrite(const uint8* PackedFrame)
 {
   if(m_SingleFile && m_CurrFrameIdx > 0) { return { eRetv::Error, fmt::format("Attempt to write multiple times into single file File={}", m_FileNamePattern) }; }
   return xImgListFileWrite(PackedFrame);
 }
-xSeqBase::tResult xSeqImgList::xImgListOpenRead()
+xSeqCommon::tResult xSeqImgList::xImgListOpenRead()
 {
   if(m_SingleFile) //file does not contain any format field
   {
@@ -125,7 +127,7 @@ xSeqBase::tResult xSeqImgList::xImgListOpenRead()
   
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqImgList::xImgListOpenWrite()
+xSeqCommon::tResult xSeqImgList::xImgListOpenWrite()
 {
   m_1stFileIdx   = 0;
   m_NumOfFrames  = 0;
@@ -150,7 +152,7 @@ void xSeqPNG::destroy()
   m_TmpBuffSize = NOT_VALID;
   xSeqImgList::destroy();
 }
-xSeqBase::tResult xSeqPNG::xImgListFileVerify(tCSR FileName)
+xSeqCommon::tResult xSeqPNG::xImgListFileVerify(tCSR FileName)
 {
   spng_ctx* Ctx = spng_ctx_new(0);
 
@@ -184,7 +186,7 @@ xSeqBase::tResult xSeqPNG::xImgListFileVerify(tCSR FileName)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqPNG::xImgListFileRead(uint8* PackedFrame)
+xSeqCommon::tResult xSeqPNG::xImgListFileRead(uint8* PackedFrame)
 {
   const std::string& FrameFileName = xFormatFileName(m_CurrFrameIdx + m_1stFileIdx);
 
@@ -239,7 +241,7 @@ xSeqBase::tResult xSeqPNG::xImgListFileRead(uint8* PackedFrame)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqPNG::xImgListFileWrite(const uint8* PackedFrame)
+xSeqCommon::tResult xSeqPNG::xImgListFileWrite(const uint8* PackedFrame)
 {
   const uint8* SrcPtrR = PackedFrame;
   const uint8* SrcPtrG = PackedFrame + m_PackedCmpNumPels;
@@ -302,7 +304,7 @@ void xSeqBMP::destroy()
   m_TmpBuffSize = NOT_VALID;
   xSeqImgList::destroy();
 }
-xSeqBase::tResult xSeqBMP::xImgListFileVerify(tCSR FileName)
+xSeqCommon::tResult xSeqBMP::xImgListFileVerify(tCSR FileName)
 {
   //Open file
   xStream File(FileName, xStream::eMode::Read);
@@ -332,7 +334,7 @@ xSeqBase::tResult xSeqBMP::xImgListFileVerify(tCSR FileName)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBMP::xImgListFileRead(uint8* PackedFrame)
+xSeqCommon::tResult xSeqBMP::xImgListFileRead(uint8* PackedFrame)
 {
   const std::string& FrameFileName = xFormatFileName(m_CurrFrameIdx + m_1stFileIdx);
 
@@ -417,7 +419,7 @@ xSeqBase::tResult xSeqBMP::xImgListFileRead(uint8* PackedFrame)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBMP::xImgListFileWrite(const uint8* PackedFrame)
+xSeqCommon::tResult xSeqBMP::xImgListFileWrite(const uint8* PackedFrame)
 {
   const std::string FrameFileName = xFormatFileName(m_CurrFrameIdx);
 
