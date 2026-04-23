@@ -27,13 +27,6 @@ void xIVSSIM::destroy()
   if(m_TstSCP != nullptr) { m_TstSCP->destroy(); delete m_TstSCP; m_TstSCP = nullptr; }
   if(m_RefSCP != nullptr) { m_RefSCP->destroy(); delete m_RefSCP; m_RefSCP = nullptr; }
   xSSIM::destroy();
-#if X_PMBB_EXPERIMENTAL
-  for(int32 i = 1; i < c_NumMultiScales; i++)
-  {
-    if(m_PicSCPDownsampledTst[i]) { m_PicSCPDownsampledTst[i]->destroy(); delete m_PicSCPDownsampledTst[i]; m_PicSCPDownsampledTst[i] = nullptr; }
-    if(m_PicSCPDownsampledRef[i]) { m_PicSCPDownsampledRef[i]->destroy(); delete m_PicSCPDownsampledRef[i]; m_PicSCPDownsampledRef[i] = nullptr; }
-  }
-#endif
 }
 flt64 xIVSSIM::calcPicIVSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP)
 {
