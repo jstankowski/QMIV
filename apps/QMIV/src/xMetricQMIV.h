@@ -24,6 +24,10 @@ enum class eMetric : int32 //values must start from 0 and be continous
     MSSSIM,
     IVSSIM,
   IVMSSSIM,
+#if X_PMBB_EXPERIMENTAL
+    //PVAR
+      PVAR,
+#endif //X_PMBB_EXPERIMENTAL
   //must be after last metric
      __NUM  
 };
@@ -63,6 +67,9 @@ struct xMetricInfo
     { eMetric::  MSSSIM, 0, 1, 0, 1, "  ", "Multi Scale Structural Similarity Index Measure"                                 },
     { eMetric::  IVSSIM, 1, 0, 1, 1, "  ", "Immersive Video - Structural Similarity Index Measure"                           },
     { eMetric::IVMSSSIM, 0, 0, 1, 1, "  ", "Immersive Video - Multi Scale Structural Similarity Index Measure"               },
+#if X_PMBB_EXPERIMENTAL
+    { eMetric::    PVAR, 0, 0, 1, 1, "  ", "pVAR - Perceptual Variance"                                                      },
+#endif //X_PMBB_EXPERIMENTAL
   };
 };
 

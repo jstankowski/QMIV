@@ -42,6 +42,23 @@ uint64 xDistortionSTD::CalcSSD16(const uint16* restrict Tst, const uint16* restr
   }
   return SSD;
 }
+tSDSSD xDistortionSTD::CalcSSS16(const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  int64 SD  = 0;
+  int64 SSD = 0;
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++)
+    {
+      int32 Diff = (int32)Tst[x] - (int32)Ref[x];
+      SD  += Diff;
+      SSD += xPow2<int64>(Diff);
+    }
+    Tst += TstStride;
+    Ref += RefStride;
+  }
+  return{ SD, SSD };
+}
 int64 xDistortionSTD::CalcWeightedSD(const uint16* restrict Tst, const uint16* restrict Ref, const uint16* restrict Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height)
 {
   int64 SD = 0;

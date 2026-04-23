@@ -22,6 +22,9 @@ eMetric xStrToMetric(const std::string_view Metric)
          MetricU ==   "MSSSIM" ? eMetric::  MSSSIM :
          MetricU ==   "IVSSIM" ? eMetric::  IVSSIM :
          MetricU == "IVMSSSIM" ? eMetric::IVMSSSIM :
+#if X_PMBB_EXPERIMENTAL
+         MetricU ==     "PVAR" ? eMetric::    PVAR :
+#endif //X_PMBB_EXPERIMENTAL
                                  eMetric::UNDEFINED;
 }
 std::string xMetricToStr(eMetric Metric)
@@ -36,6 +39,9 @@ std::string xMetricToStr(eMetric Metric)
   case eMetric::MSSSIM  : return    "MSSSIM"; break;
   case eMetric::IVSSIM  : return    "IVSSIM"; break;
   case eMetric::IVMSSSIM: return  "IVMSSSIM"; break;
+#if X_PMBB_EXPERIMENTAL
+  case eMetric::PVAR   : return       "PVAR"; break;
+#endif //X_PMBB_EXPERIMENTAL
   default               : return "UNDEFINED"; break;
   }
 }

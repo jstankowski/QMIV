@@ -343,10 +343,18 @@ bool xAppQMIV::readConfiguration()
   m_NumInputsCur = !m_UseMask ? 2 : 3;
   
   m_CalcPSNRs    = getCalcMetric(eMetric::PSNR) || getCalcMetric(eMetric::WSPSNR) || getCalcMetric(eMetric::IVPSNR);
+#if X_PMBB_EXPERIMENTAL
+  m_CalcSSIMs    = getCalcMetric(eMetric::SSIM) || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVMSSSIM);
+  m_CalcPVDs     = getCalcMetric(eMetric::PVAR);
+  m_CalcIVs      = getCalcMetric(eMetric::IVPSNR) || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::IVMSSSIM);
+  m_CalcMSs      = getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVMSSSIM);
+  m_CalcSCP      = m_WriteSCP || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::IVMSSSIM);
+#else //X_PMBB_EXPERIMENTAL
   m_CalcSSIMs    = getCalcMetric(eMetric::SSIM) || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVMSSSIM);
   m_CalcIVs      = getCalcMetric(eMetric::IVPSNR) || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::IVMSSSIM);
   m_CalcMSs      = getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVMSSSIM);
   m_CalcSCP      = m_WriteSCP || getCalcMetric(eMetric::IVSSIM) || getCalcMetric(eMetric::IVMSSSIM);
+#endif //X_PMBB_EXPERIMENTAL
   m_CalcGCD      = m_CalcIVs || m_CalcSCP;
   m_UsePicI      = getCalcMetric(eMetric::IVPSNR) || m_CalcSCP || m_UseMask;
 
@@ -725,6 +733,14 @@ void xAppQMIV::createProcessors()
     if(m_IsEquirectangular) { m_ProcSSIM.initWS(true, PictureWidth, PictureHeight, m_BitDepth, m_LonRangeDeg, m_LatRangeDeg); }
   }
 
+#if X_PMBB_EXPERIMENTAL
+  if(m_CalcPVDs)
+  {
+    QMIV_TRACE(3, "ProcPVD");
+    m_ProcPVD.bindThrdPoolIntf(&m_TPI);
+  }
+#endif //X_PMBB_EXPERIMENTAL
+
   QMIV_TRACE(3, "initMetric");
   for(int32 m = 0; m < c_MetricsNum; m++)
   {
@@ -805,6 +821,11 @@ eAppRes xAppQMIV::processAllFrames()
     uint64 T14 = m_GatherTime ? xTSC() : 0;
     if(getCalcMetric(eMetric::IVMSSSIM)) { calcFrameIVMSSSIM(f); }
     uint64 T15 = m_GatherTime ? xTSC() : 0;
+#if X_PMBB_EXPERIMENTAL
+    if(getCalcMetric(eMetric::PVAR)) { calcFrame_____PVD(f); }
+    uint64 T16 = m_GatherTime ? xTSC() : 0;
+#endif //X_PMBB_EXPERIMENTAL
+
 
     if(m_GatherTime)
     {
@@ -823,6 +844,9 @@ eAppRes xAppQMIV::processAllFrames()
       m_MetricData[(int32)eMetric::  MSSSIM].addTicks(T13 - T12);
       m_MetricData[(int32)eMetric::  IVSSIM].addTicks(T14 - T13);
       m_MetricData[(int32)eMetric::IVMSSSIM].addTicks(T15 - T14);
+#if X_PMBB_EXPERIMENTAL
+      m_MetricData[(int32)eMetric::    PVAR].addTicks(T16 - T15);
+#endif //X_PMBB_EXPERIMENTAL
     }
   } //end of loop over frames
 
@@ -1106,6 +1130,20 @@ void xAppQMIV::calcFrameIVMSSSIM(int32 FrameIdx)
     fmt::print("{}\n", Log);
   }
 }
+#if X_PMBB_EXPERIMENTAL
+void xAppQMIV::calcFrame_____PVD(int32 FrameIdx)
+{
+  QMIV_TRACE(3, "");
+  flt64 PVD = m_ProcPVD.calcPicPVD(&m_PicInP[0], &m_PicInP[1]);
+  m_MetricData[(int32)eMetric::PVAR].setPerPicMeric(PVD, FrameIdx);
+
+  if(m_PrintFrame)
+  {
+    std::string Log = fmt::format("Frame {:08d} ", FrameIdx) + m_MetricData[(int32)eMetric::PVAR].formatPerPicMetric(FrameIdx);
+    fmt::print("{}\n", Log);
+  }
+}
+#endif //X_PMBB_EXPERIMENTAL
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1194,6 +1232,9 @@ std::string xAppQMIV::formatResultsStdOut()
           case eMetric::  MSSSIM: PreMetricOps += AvgDuration__Margin; break;
           case eMetric::  IVSSIM: PreMetricOps += AvgDuration_Arrange + AvgDuration_____GCD + AvgDuration_____SCP + AvgDuration__Margin; break;
           case eMetric::IVMSSSIM: PreMetricOps += AvgDuration_Arrange + AvgDuration_____GCD + AvgDuration_____SCP + AvgDuration__Margin; break;
+#if X_PMBB_EXPERIMENTAL
+          case eMetric::    PVAR: break;
+#endif //X_PMBB_EXPERIMENTAL
           default: break;
         }
 
@@ -1207,6 +1248,9 @@ std::string xAppQMIV::formatResultsStdOut()
           case eMetric::  MSSSIM: PreMetricStr += " Margin"     ; break;
           case eMetric::  IVSSIM: PreMetricStr += " Rearrange GCD SCP Margin"; break;
           case eMetric::IVMSSSIM: PreMetricStr += " Rearrange GCD SCP Margin"; break;
+#if X_PMBB_EXPERIMENTAL
+          case eMetric::    PVAR: break;
+#endif //X_PMBB_EXPERIMENTAL
           default: break;
         }
 

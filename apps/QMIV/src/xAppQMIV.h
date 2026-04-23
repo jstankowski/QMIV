@@ -8,6 +8,9 @@
 #include "xSeq.h"
 #include "xIVPSNR.h"
 #include "xIVSSIM.h"
+#if X_PMBB_EXPERIMENTAL
+#include "xPVD.h"
+#endif //X_PMBB_EXPERIMENTAL
 #include "xCfgINI.h"
 #include "xFmtScn.h"
 #include "xMemory.h"
@@ -99,6 +102,9 @@ public:
   bool        m_WriteSCP = false;
   bool        m_CalcPSNRs;
   bool        m_CalcSSIMs;
+#if X_PMBB_EXPERIMENTAL
+  bool        m_CalcPVDs;
+#endif //X_PMBB_EXPERIMENTAL
   bool        m_CalcIVs;
   bool        m_CalcMSs;
   bool        m_CalcGCD;
@@ -135,6 +141,9 @@ protected:
   xShftCompPicProc m_ProcSCP;
   xIVPSNRM         m_ProcPSNR;
   xIVSSIM          m_ProcSSIM;
+#if X_PMBB_EXPERIMENTAL
+  xPVD             m_ProcPVD ;
+#endif //X_PMBB_EXPERIMENTAL
 
   //intermediates
   boolV4  m_ExactCmps    = xMakeVec4<bool>(false);
@@ -196,6 +205,9 @@ public:
   void        calcFrame__MSSSIM(int32 FrameIdx);
   void        calcFrame__IVSSIM(int32 FrameIdx);
   void        calcFrameIVMSSSIM(int32 FrameIdx);
+#if X_PMBB_EXPERIMENTAL
+  void        calcFrame_____PVD(int32 FrameIdx);
+#endif //X_PMBB_EXPERIMENTAL  
 
   std::string calibrateTimeStamp();
   void        combineFrameStats ();
