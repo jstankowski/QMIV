@@ -17,9 +17,9 @@ namespace PMBB_NAMESPACE {
 const std::string_view xAppQMIV::c_BannerString =
 R"PMBBRAWSTRING(
 =============================================================================
-QMIV software v3.0-dev   [Quality Merics for Immersive Video]
+QMIV software v3.0   [Quality Merics for Immersive Video]
 
-Copyright (c) 2020-2025, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
+Copyright (c) 2020-2026, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
 Developed at Poznan University of Technology, Poznan, Poland
 Authors: Jakub Stankowski, Adrian Dziembowski
@@ -39,7 +39,7 @@ https://doi.org/10.3390/app14167090
 const std::string_view xAppQMIV::c_HelpString =
 R"PMBBRAWSTRING(
 =============================================================================
-QMIV software v3.0-dev
+QMIV software v3.0
 
  Cmd | ParamName        | Description
 
@@ -1211,7 +1211,7 @@ std::string xAppQMIV::formatResultsStdOut()
         }
 
 
-        Result += MD.formatAvgTime("AvgTime      ", PreMetricOps) + "   (Total includes = [" + PreMetricStr + "]\n";
+        Result += MD.formatAvgTime("AvgTime      ", PreMetricOps) + "   TotalIncludes = [" + PreMetricStr + "]\n";
       }
     }
   }

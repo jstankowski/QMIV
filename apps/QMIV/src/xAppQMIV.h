@@ -96,7 +96,7 @@ public:
   bool        m_ReorderRGB;
   bool        m_InputRGB;  
   int32       m_NumInputsCur;  
-  bool        m_WriteSCP;
+  bool        m_WriteSCP = false;
   bool        m_CalcPSNRs;
   bool        m_CalcSSIMs;
   bool        m_CalcIVs;
