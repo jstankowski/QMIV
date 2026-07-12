@@ -52,6 +52,9 @@ public:
   static flt64 CalcMSEfromMaskedSSD (flt64 SSDM, int64 NumNonMasked,                    int32 BitDepthMsk);
   static flt64 CalcPSNRfromMaskedSSD(flt64 SSDM, int64 NumNonMasked, int32 BitDepthPic, int32 BitDepthMsk);
 
+  static flt64 CalcAvgPSNRinPSNRDomain(const flt64V4& CmpPSNRs, const int32V4& CmpWeights);
+  static flt64 CalcAvgPSNRinMSEDomain (const flt64V4& CmpPSNRs, const int32V4& CmpWeights);
+
   static flt64 getFakePSNR(int32 Area, int32 BitDepth) { return CalcPSNRfromSSD(1, Area, BitDepth); }
 };
 

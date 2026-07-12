@@ -173,6 +173,20 @@ public:
     {     1,     5,    13,    32,    64,   108,   152,   181,   181,   152,   108,    64,    32,    13,     5,     1, },
     {     0,     1,     4,    10,    19,    32,    45,    54,    54,    45,    32,    19,    10,     4,     1,     0, },
   } };
+
+  //mask SSIM
+  static constexpr int32 c_MaskNumBits = 8;
+  static constexpr int32 c_MaskMaxVal  = (1 << c_MaskNumBits) - 1;
+
+  //regular SSIM - with mask
+  //static constexpr int64 c_RegFltrIntMaskMul    = (int64)c_FltrIntMul * (int64)c_FilterArea * (int64)c_MaskMaxVal;
+  //static constexpr flt64 c_InvRegFltrIntMaskMul = (flt64)1.0 / (flt64)c_RegFltrIntMaskMul;
+
+  static constexpr int32 c_RegMaskMul    = (int64)c_FilterArea * (int64)c_MaskMaxVal;
+  static constexpr flt64 c_InvRegMaskMul = (flt64)1.0 / (flt64)c_RegMaskMul;
+
+  //block SSIM
+
 };
 
 //===============================================================================================================================================================================================================

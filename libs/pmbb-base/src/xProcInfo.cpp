@@ -393,6 +393,8 @@ xProcInfo::eMFL xProcInfo::xStrToMfl(const std::string_view Mfl)
   std::string MflU = xString::toUpper(Mfl);
   return (MflU == "UNDEFINED"                     ) ? eMFL::UNDEFINED      :
 #if defined(X_PMBB_ARCH_AMD64) 
+         (MflU == "ZENVER6"    || MflU == "ZNVER6"     ) ? eMFL::ZenVer6   :
+         (MflU == "ZENVER5"    || MflU == "ZNVER5"     ) ? eMFL::ZenVer5   :
          (MflU == "ZENVER4"    || MflU == "ZNVER4"     ) ? eMFL::ZenVer4   :
          (MflU == "AMD64V4"    || MflU == "X86-64-V4"  ) ? eMFL::AMD64v4   :
          (MflU == "AMD64V3"    || MflU == "X86-64-V3"  ) ? eMFL::AMD64v3   :
@@ -419,6 +421,8 @@ std::string xProcInfo::xMflToStr(eMFL Mfl)
          Mfl == eMFL::AMD64v3        ? "x86-64-v3"      :
          Mfl == eMFL::AMD64v4        ? "x86-64-v4"      :
          Mfl == eMFL::ZenVer4        ? "ZenVer4"        :
+         Mfl == eMFL::ZenVer5        ? "ZenVer5"        :
+         Mfl == eMFL::ZenVer6        ? "ZenVer6"        :
 #elif defined(X_PMBB_ARCH_ARM64) 
          Mfl == eMFL::ARM64v8p0_SCLR ? "ARM64v8p0_SCLR" :
          Mfl == eMFL::ARM64v8p0_AVEC ? "ARM64v8p0_AVEC" :
@@ -438,7 +442,9 @@ std::string xProcInfo::xMflToDescription(eMFL Mfl)
     case eMFL::AMD64v2  : return "x86-64-v2 : x86-64 + CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3"; break;
     case eMFL::AMD64v3  : return "x86-64-v3 : x86-64-v2 + AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE"; break;
     case eMFL::AMD64v4  : return "x86-64-v4 : x86-64-v3 + AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL"; break;
-    case eMFL::ZenVer4  : return "x86-64-v4 : BMI, BMI2, CLWB, F16C, FMA, FSGSBASE, AVX, AVX2, ADCX, RDSEED, MWAITX, SHA, CLZERO, AES, PCLMUL, CX16, MOVBE, MMX, SSE, SSE2, SSE3, SSE4A, SSSE3, SSE4.1, SSE4.2, ABM, XSAVEC, XSAVES, CLFLUSHOPT, POPCNT, RDPID, WBNOINVD, PKU, VPCLMULQDQ, VAES, AVX512F, AVX512DQ, AVX512IFMA, AVX512CD, AVX512BW, AVX512VL, AVX512BF16, AVX512VBMI, AVX512VBMI2, AVX512VNNI, AVX512BITALG, AVX512VPOPCNTDQ, GFNI"; break;
+    case eMFL::ZenVer4  : return "Zen4      : BMI, BMI2, CLWB, F16C, FMA, FSGSBASE, AVX, AVX2, ADCX, RDSEED, MWAITX, SHA, CLZERO, AES, PCLMUL, CX16, MOVBE, MMX, SSE, SSE2, SSE3, SSE4A, SSSE3, SSE4.1, SSE4.2, ABM, XSAVEC, XSAVES, CLFLUSHOPT, POPCNT, RDPID, WBNOINVD, PKU, VPCLMULQDQ, VAES, AVX512F, AVX512DQ, AVX512IFMA, AVX512CD, AVX512BW, AVX512VL, AVX512BF16, AVX512VBMI, AVX512VBMI2, AVX512VNNI, AVX512BITALG, AVX512VPOPCNTDQ, GFNI"; break;
+    case eMFL::ZenVer5  : return "Zen5      : Zen4 + AVX_VNNI, MOVDIRI, MOVDIR64B, AVX512_VP2INTERSECT, PREFETCHI"; break;
+    case eMFL::ZenVer6  : return "Zen6      : Zen5 + AVX_VNNI_INT8, AVX_IFMA, AVX512_FP16, AVX_NE_CONVERT, AVX512_BMM"; break;
 #elif defined(X_PMBB_ARCH_ARM64)
     case eMFL::ARM64v8p0_SCLR: return "ARMv8.0-A only scalar code (PMBB NEON implementation disabled) - for testing purposes only"; break;
     case eMFL::ARM64v8p0_AVEC: return "ARMv8.0-A only autovectorized code (PMBB NEON implementation disabled) - for testing purposes only"; break;

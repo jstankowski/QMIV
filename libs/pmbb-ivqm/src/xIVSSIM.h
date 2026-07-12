@@ -28,19 +28,25 @@ public:
 
 //IVSSIM
 protected:
+#if X_PMBB_STALLED
   //(corresponding pixel) Shift Compensated Pictures (SCP)
-  xPicP* m_TstSCP = nullptr; 
-  xPicP* m_RefSCP = nullptr;
+  xPicP* m_PicSCPDownsampledTst[c_NumMultiScales] = { nullptr };
+  xPicP* m_PicSCPDownsampledRef[c_NumMultiScales] = { nullptr };
+#endif //X_PMBB_STALLED
 
 public:
-  virtual void create (int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS, bool PreAllocateSCP = false);
+  virtual void create (int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS, bool EnableMask);
   virtual void destroy();
 
-  flt64 calcPicIVSSIM  (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP = nullptr, const xPicP* RefSCP = nullptr);
-  flt64 calcPicIVMSSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP = nullptr, const xPicP* RefSCP = nullptr);
+  flt64 calcPicIVSSIM  (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP);
+  flt64 calcPicIVMSSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP);
+#if X_PMBB_STALLED
+  flt64 calcPicMSIVSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP);
+#endif //X_PMBB_STALLED
 
   //mask mode
-  flt64 calcPicIVSSIMM (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, const xPicP* Msk, int32 NumNonMasked = NOT_VALID);
+  flt64 calcPicIVSSIMM  (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, const xPicP* Msk);
+  flt64 calcPicIVMSSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, const xPicP* Msk);
 
   //visualization
   void  visualizeIVSSIM(xPlane<uint16>* Vis, const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, eCmp CmpId);
@@ -51,9 +57,8 @@ protected:
 
   flt64V4 xCalcPicMSSSIM(const xPicP* Tst, const xPicP* Ref);
 
-  flt64V4 xCalcPicSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk,             int32 NumNonMasked, bool UseWS, bool CalcL);
-  flt64   xCalcCmpSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId, int32 NumNonMasked, bool UseWS, bool CalcL);
-
+  flt64V4 xCalcPicSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk,             bool UseWS, bool CalcL);
+  flt64   xCalcCmpSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId, bool UseWS, bool CalcL);
 };
 
 //===============================================================================================================================================================================================================

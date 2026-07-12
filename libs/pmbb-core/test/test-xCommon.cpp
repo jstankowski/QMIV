@@ -77,37 +77,41 @@ void testRounding(bool Verbose)
     flt32 F32 = (flt32)i / (flt32)1000;
     flt64 F64 = (flt64)i / (flt64)1000;
 
-    int64 RefNI32 = (int64)nearbyint(F32);
-    int64 RefNI64 = (int64)nearbyint(F64);
-    int64 RefRI32 = (int64)round(F32);
-    int64 RefRI64 = (int64)round(F64);
+    int64 RefNF32I32 = (int64)nearbyint(F32);
+    int64 RefNF64I64 = (int64)nearbyint(F64);
+    int64 RefRF32I32 = (int64)round    (F32);
+    int64 RefRF64I64 = (int64)round    (F64);
 
-    int64 TstNI32 = (int64)xNearbyF32ToI32(F32);
-    int64 TstNI64 = (int64)xNearbyF64ToI32(F64);
-    int64 TstRI32 = (int64)xRoundF32ToI32 (F32);
-    int64 TstRI64 = (int64)xRoundF64ToI32 (F64);
+    int64 TstNF32I32 = (int64)xNearbyF32ToI32(F32);
+    int64 TstNF64I32 = (int64)xNearbyF64ToI32(F64);
+    int64 TstNF64I64 = (int64)xNearbyF64ToI64(F64);
+    int64 TstRF32I32 = (int64)xRoundF32ToI32 (F32);
+    int64 TstRF64I32 = (int64)xRoundF64ToI32 (F64);
 
-    CHECK(TstNI32 == RefNI32);
-    CHECK(TstNI64 == RefNI64);
-    CHECK(TstRI32 == RefRI32);
-    CHECK(TstRI64 == RefRI64);
+    CHECK(TstNF32I32 == RefNF32I32);
+    CHECK(TstNF64I32 == RefNF64I64);
+    CHECK(TstNF64I64 == RefNF64I64);
+    CHECK(TstRF32I32 == RefRF32I32);
+    CHECK(TstRF64I32 == RefRF64I64);
 
     if(i >= 0)
     {
-      int64 RefNU32 = xClipU((int64)nearbyint(F32), (int64)std::numeric_limits<uint32>::max());
-      int64 RefNU64 = xClipU((int64)nearbyint(F64), (int64)std::numeric_limits<uint32>::max());
-      int64 RefRU32 = xClipU((int64)round    (F32), (int64)std::numeric_limits<uint32>::max());
-      int64 RefRU64 = xClipU((int64)round    (F64), (int64)std::numeric_limits<uint32>::max());
+      int64 RefNF32U32 = xClipU((int64)nearbyint(F32), (int64)std::numeric_limits<uint32>::max());
+      int64 RefNF64U64 = xClipU((int64)nearbyint(F64), (int64)std::numeric_limits<uint32>::max());
+      int64 RefRF32U32 = xClipU((int64)round    (F32), (int64)std::numeric_limits<uint32>::max());
+      int64 RefRF64U64 = xClipU((int64)round    (F64), (int64)std::numeric_limits<uint32>::max());
 
-      int64 TstNU32 = (int64)xNearbyF32ToU32(F32);
-      int64 TstNU64 = (int64)xNearbyF64ToU32(F64);
-      int64 TstRU32 = (int64)xRoundF32ToU32 (F32);
-      int64 TstRU64 = (int64)xRoundF64ToU32 (F64);
+      int64 TstNF32U32 = (int64)xNearbyF32ToU32(F32);
+      int64 TstNF64U32 = (int64)xNearbyF64ToU32(F64);
+      int64 TstNF64U64 = (int64)xNearbyF64ToU64(F64);
+      int64 TstRF32U32 = (int64)xRoundF32ToU32 (F32);
+      int64 TstRF64U32 = (int64)xRoundF64ToU32 (F64);
 
-      CHECK(TstNU32 == RefNU32);
-      CHECK(TstNU64 == RefNU64);
-      CHECK(TstRU32 == RefRU32);
-      CHECK(TstRU64 == RefRU64);
+      CHECK(TstNF32U32 == RefNF32U32);
+      CHECK(TstNF64U32 == RefNF64U64);
+      CHECK(TstNF64U64 == RefNF64U64);
+      CHECK(TstRF32U32 == RefRF32U32);
+      CHECK(TstRF64U32 == RefRF64U64);
     }
   }
 }

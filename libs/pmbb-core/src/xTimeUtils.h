@@ -17,6 +17,7 @@ namespace PMBB_NAMESPACE {
 using tClock      = std::chrono::high_resolution_clock       ;
 using tTimePoint  = tClock::time_point                       ;
 using tDuration   = tClock::duration                         ;
+using tDurationNS = std::chrono::duration<double, std::nano >;
 using tDurationUS = std::chrono::duration<double, std::micro>;
 using tDurationMS = std::chrono::duration<double, std::milli>;
 using tDurationS  = std::chrono::duration<double            >;

@@ -70,7 +70,7 @@ int32V4 xGlobClrDiff::CalcGlobalColorDiffM(const xPicP* Tst, const xPicP* Ref, c
     for(int32 CmpIdx = 0; CmpIdx < NumCmps; CmpIdx++)
     {
       TPI->storeTask([&SumColorDiff, &Tst, &Ref, &Msk, CmpIdx](int32 /*ThreadIdx*/)
-        { SumColorDiff[CmpIdx] = xDistortion::CalcWeightedSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Msk->getAddr(eCmp::LM), Tst->getStride(), Ref->getStride(), Msk->getStride(), Ref->getWidth(), Ref->getHeight()); }
+        { SumColorDiff[CmpIdx] = xDistortion::CalcWghtSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Msk->getAddr(eCmp::LM), Tst->getStride(), Ref->getStride(), Msk->getStride(), Ref->getWidth(), Ref->getHeight()); }
       );
     }
     TPI->executeStoredTasks();
@@ -79,7 +79,7 @@ int32V4 xGlobClrDiff::CalcGlobalColorDiffM(const xPicP* Tst, const xPicP* Ref, c
   {
     for(int32 CmpIdx = 0; CmpIdx < NumCmps; CmpIdx++)
     {
-      SumColorDiff[CmpIdx] = xDistortion::CalcWeightedSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Msk->getAddr(eCmp::LM), Tst->getStride(), Ref->getStride(), Msk->getStride(), Ref->getWidth(), Ref->getHeight());
+      SumColorDiff[CmpIdx] = xDistortion::CalcWghtSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Msk->getAddr(eCmp::LM), Tst->getStride(), Ref->getStride(), Msk->getStride(), Ref->getWidth(), Ref->getHeight());
     }
   }
 

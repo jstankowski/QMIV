@@ -26,8 +26,9 @@ using namespace PMBB_NAMESPACE;
 //===============================================================================================================================================================================================================
 
 static const std::vector<int32> c_Dimms = { 4, 8, 11, 16, 32 };
-static const std::vector<int32> c_BitDs = { 8, 14 };
+static const std::vector<int32> c_BitDs = { 8, 10, 12, 14 };
 static const std::vector<int32> c_Margs = { 0, 4, 32 };
+static const std::vector<int32> c_MskVs = { 0, 1, 128, 254, 255 };
 static constexpr int32          c_NumRandomTests = 256;
 static constexpr flt64          c_ToleranceSSIM_Gaussian = 0.00001;
 static constexpr flt64          c_ToleranceSSIM_Averaged = 0.00000001;
@@ -77,11 +78,11 @@ void testCalcRglr(fCalcSS CalcRglrTst, fCalcSS CalcRglrRef, bool CalcL, flt64 To
       const std::string Description = fmt::format("SizeXxY={}x{} Margin={} BitDepth={}", Size.getX(), Size.getY(), m, b);
 
       //buffers create
-      xPlane<uint16>* Ref = new xPlane<uint16>(Size, b, m);
-      xPlane<uint16>* Tst = new xPlane<uint16>(Size, b, m);
+      xPlane<uint16> Ref(Size, b, m);
+      xPlane<uint16> Tst(Size, b, m);
 
-      int32 OffT = (5 * Tst->getStride() + 5);
-      int32 OffR = (5 * Ref->getStride() + 5);
+      int32 OffT = (5 * Tst.getStride() + 5);
+      int32 OffR = (5 * Ref.getStride() + 5);
 
       //deterministic tests
       CAPTURE(Description + fmt::format(" Deterministic"));
@@ -94,41 +95,41 @@ void testCalcRglr(fCalcSS CalcRglrTst, fCalcSS CalcRglrRef, bool CalcL, flt64 To
 
       for(const uint16V2 TestVals : VPs)
       {
-        Ref->zero(true);
-        Tst->zero(true);
-        Ref->fill(TestVals[0], false);
-        Tst->fill(TestVals[1], false);
+        Ref.zero(true);
+        Tst.zero(true);
+        Ref.fill(TestVals[0], false);
+        Tst.fill(TestVals[1], false);
 
-        flt64 A = CalcRglrRef(Tst->getAddr()+ OffT, Ref->getAddr()+OffR, Tst->getStride(), Ref->getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
-        flt64 B = CalcRglrTst(Tst->getAddr()+ OffT, Ref->getAddr()+OffR, Tst->getStride(), Ref->getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
-        CHECK(xIsApproximatelyEqual(A, B, Tolerance));
+        flt64 RefSSIM = CalcRglrRef(Tst.getAddr()+ OffT, Ref.getAddr()+OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        flt64 TstSSIM = CalcRglrTst(Tst.getAddr()+ OffT, Ref.getAddr()+OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        CHECK(xIsApproximatelyEqual(RefSSIM, TstSSIM, Tolerance));
       }
 
       //gradient test
       CAPTURE(Description + fmt::format(" Gradient"));
-      Ref->zero(true);
-      Tst->zero(true);
-      xTestUtils::fillGradientXY(Ref->getAddr(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), Ref->getBitDepth(), 0);
+      Ref.zero(true);
+      Tst.zero(true);
+      xTestUtils::fillGradientXY(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), Ref.getBitDepth(), 0);
       for(int32 GradOffset = 0; GradOffset <= 10; GradOffset++)
       {          
-        xTestUtils::fillGradientXY(Tst->getAddr(), Tst->getStride(), Tst->getWidth(), Tst->getHeight(), Tst->getBitDepth(), GradOffset);
-        flt64 A = CalcRglrRef(Tst->getAddr()+ OffT, Ref->getAddr()+OffR, Tst->getStride(), Ref->getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
-        flt64 B = CalcRglrTst(Tst->getAddr()+ OffT, Ref->getAddr()+OffR, Tst->getStride(), Ref->getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
-        CHECK(xIsApproximatelyEqual(A, B, Tolerance));
+        xTestUtils::fillGradientXY(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), Tst.getBitDepth(), GradOffset);
+        flt64 RefSSIM = CalcRglrRef(Tst.getAddr()+ OffT, Ref.getAddr()+OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        flt64 TstSSIM = CalcRglrTst(Tst.getAddr()+ OffT, Ref.getAddr()+OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        CHECK(xIsApproximatelyEqual(RefSSIM, TstSSIM, Tolerance));
       }
 
       //random tests
       CAPTURE(Description + fmt::format(" Random"));
-      Ref->zero(true);
-      Tst->zero(true);
+      Ref.zero(true);
+      Tst.zero(true);
       for(int32 n = 0; n < c_NumRandomTests; n++)
       {
-        State = xTestUtils::fillMidNoise(Ref->getAddr(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), b, 0, State);
-        State = xTestUtils::fillMidNoise(Tst->getAddr(), Tst->getStride(), Tst->getWidth(), Tst->getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), b, 0, State);
 
-        flt64 A = CalcRglrRef(Tst->getAddr()+ OffT, Ref->getAddr()+OffR, Tst->getStride(), Ref->getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
-        flt64 B = CalcRglrTst(Tst->getAddr()+ OffT, Ref->getAddr()+OffR, Tst->getStride(), Ref->getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
-        CHECK(xIsApproximatelyEqual(A, B, Tolerance));
+        flt64 RefSSIM = CalcRglrRef(Tst.getAddr()+ OffT, Ref.getAddr()+OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        flt64 TstSSIM = CalcRglrTst(Tst.getAddr()+ OffT, Ref.getAddr()+OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        CHECK(xIsApproximatelyEqual(RefSSIM, TstSSIM, Tolerance));
       }
     }
   }
@@ -146,8 +147,11 @@ void testCalcBlckAvg(fCalcSS CalcBlckAvg, int32 WndSize, bool CalcL)
       const std::string Description = fmt::format("SizeXxY={}x{} Margin={} BitDepth={}", Size.getX(), Size.getY(), m, b);
 
       //buffers create
-      xPlane<uint16>* Ref = new xPlane<uint16>(Size, b, m);
-      xPlane<uint16>* Tst = new xPlane<uint16>(Size, b, m);
+      xPlane<uint16> Ref(Size, b, m);
+      xPlane<uint16> Tst(Size, b, m);
+
+      int32 OffT = (5 * Tst.getStride() + 5);
+      int32 OffR = (5 * Ref.getStride() + 5);
 
       //deterministic tests
       CAPTURE(Description + fmt::format(" Deterministic"));
@@ -160,41 +164,56 @@ void testCalcBlckAvg(fCalcSS CalcBlckAvg, int32 WndSize, bool CalcL)
 
       for(const uint16V2 TestVals : VPs)
       {
-        Ref->zero(true);
-        Tst->zero(true);
-        Ref->fill(TestVals[0], false);
-        Tst->fill(TestVals[1], false);
+        Ref.zero(true);
+        Tst.zero(true);
+        Ref.fill(TestVals[0], false);
+        Tst.fill(TestVals[1], false);
 
-        flt64 A = xStructSimSTD::CalcBlckAvg(Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
-        flt64 B =                CalcBlckAvg(Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
-        CHECK(A == B);
+        flt64 RefSSIM = xStructSimSTD::CalcBlckAvg(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        flt64 TstSSIM =                CalcBlckAvg(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        CHECK(TstSSIM == RefSSIM);
+        if(WndSize == 11)
+        {
+          RefSSIM = xStructSimSTD::CalcRglrAvg(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+          CHECK(TstSSIM == RefSSIM);
+        }
       }
 
       //gradient test
       CAPTURE(Description + fmt::format(" Gradient"));
-      Ref->zero(true);
-      Tst->zero(true);
-      xTestUtils::fillGradientXY(Ref->getAddr(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), Ref->getBitDepth(), 0);
+      Ref.zero(true);
+      Tst.zero(true);
+      xTestUtils::fillGradientXY(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), Ref.getBitDepth(), 0);
       for(int32 GradOffset = 0; GradOffset <= 10; GradOffset++)
       {          
-        xTestUtils::fillGradientXY(Tst->getAddr(), Tst->getStride(), Tst->getWidth(), Tst->getHeight(), Tst->getBitDepth(), GradOffset);
-        flt64 A = xStructSimSTD::CalcBlckAvg(Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
-        flt64 B =                CalcBlckAvg(Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
-        CHECK(A == B);
+        xTestUtils::fillGradientXY(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), Tst.getBitDepth(), GradOffset);
+        flt64 RefSSIM = xStructSimSTD::CalcBlckAvg(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        flt64 TstSSIM =                CalcBlckAvg(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        CHECK(TstSSIM == RefSSIM);
+        if(WndSize == 11)
+        {
+          RefSSIM = xStructSimSTD::CalcRglrAvg(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+          CHECK(TstSSIM == RefSSIM);
+        }
       }
 
       //random tests
       CAPTURE(Description + fmt::format(" Random"));
-      Ref->zero(true);
-      Tst->zero(true);
+      Ref.zero(true);
+      Tst.zero(true);
       for(int32 n = 0; n < c_NumRandomTests; n++)
       {
-        State = xTestUtils::fillMidNoise(Ref->getAddr(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), b, 0, State);
-        State = xTestUtils::fillMidNoise(Tst->getAddr(), Tst->getStride(), Tst->getWidth(), Tst->getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), b, 0, State);
 
-        flt64 A = xStructSimSTD::CalcBlckAvg(Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
-        flt64 B =                CalcBlckAvg(Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
-        CHECK(A == B);
+        flt64 RefSSIM = xStructSimSTD::CalcBlckAvg(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        flt64 TstSSIM =                CalcBlckAvg(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        CHECK(TstSSIM == RefSSIM);
+        if(WndSize == 11)
+        {
+          RefSSIM = xStructSimSTD::CalcRglrAvg(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+          CHECK(TstSSIM == RefSSIM);
+        }
       }
     }
   }  
@@ -215,8 +234,8 @@ void testCalcMultiBlckAvg(std::function<void(flt64* restrict SSIMs, const uint16
       const std::string Description = fmt::format("SizeXxY={}x{} Margin={} BitDepth={}", Size.getX(), Size.getY(), m, b);
 
       //buffers create
-      xPlane<uint16>* Ref = new xPlane<uint16>(Size, b, m);
-      xPlane<uint16>* Tst = new xPlane<uint16>(Size, b, m);
+      xPlane<uint16> Ref(Size, b, m);
+      xPlane<uint16> Tst(Size, b, m);
 
       //deterministic tests
       CAPTURE(Description + fmt::format(" Deterministic"));
@@ -229,18 +248,18 @@ void testCalcMultiBlckAvg(std::function<void(flt64* restrict SSIMs, const uint16
 
       for(const uint16V2 TestVals : VPs)
       {
-        Ref->zero(true);
-        Tst->zero(true);
-        Ref->fill(TestVals[0], false);
-        Tst->fill(TestVals[1], false);
+        Ref.zero(true);
+        Tst.zero(true);
+        Ref.fill(TestVals[0], false);
+        Tst.fill(TestVals[1], false);
         std::fill(A.begin(), A.end(), std::numeric_limits<flt64>::quiet_NaN());
         std::fill(B.begin(), B.end(), std::numeric_limits<flt64>::quiet_NaN());
 
         for(int32 i = 0; i < BlocksPerBatch; i++)
         {
-          A[i] = xStructSimSTD::CalcBlckAvg(Tst->getAddr() + Stride * i, Ref->getAddr() + Stride * i, Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
+          A[i] = xStructSimSTD::CalcBlckAvg(Tst.getAddr() + Stride * i, Ref.getAddr() + Stride * i, Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
         }
-        CalcMultiBlckAvg(B.data(), Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), C1, C2, CalcL);
+        CalcMultiBlckAvg(B.data(), Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), C1, C2, CalcL);
         for(int32 i = 0; i < BlocksPerBatch; i++)
         {
           CHECK(A[i] == B[i]);
@@ -249,20 +268,20 @@ void testCalcMultiBlckAvg(std::function<void(flt64* restrict SSIMs, const uint16
 
       //gradient test
       CAPTURE(Description + fmt::format(" Gradient"));
-      Ref->zero(true);
-      Tst->zero(true);
+      Ref.zero(true);
+      Tst.zero(true);
 
-      xTestUtils::fillGradientXY(Ref->getAddr(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), Ref->getBitDepth(), 0);
+      xTestUtils::fillGradientXY(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), Ref.getBitDepth(), 0);
       for(int32 GradOffset = 1; GradOffset <= 10; GradOffset++)
       {          
-        xTestUtils::fillGradientXY(Tst->getAddr(), Tst->getStride(), Tst->getWidth(), Tst->getHeight(), Tst->getBitDepth(), GradOffset);
+        xTestUtils::fillGradientXY(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), Tst.getBitDepth(), GradOffset);
         std::fill(A.begin(), A.end(), std::numeric_limits<flt64>::quiet_NaN());
         std::fill(B.begin(), B.end(), std::numeric_limits<flt64>::quiet_NaN());
         for(int32 i = 0; i < BlocksPerBatch; i++)
         {
-          A[i] = xStructSimSTD::CalcBlckAvg(Tst->getAddr() + Stride * i, Ref->getAddr() + Stride * i, Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
+          A[i] = xStructSimSTD::CalcBlckAvg(Tst.getAddr() + Stride * i, Ref.getAddr() + Stride * i, Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
         }
-        CalcMultiBlckAvg(B.data(), Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), C1, C2, CalcL);
+        CalcMultiBlckAvg(B.data(), Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), C1, C2, CalcL);
         for(int32 i = 0; i < BlocksPerBatch; i++)
         {
           CHECK(A[i] == B[i]);
@@ -271,22 +290,22 @@ void testCalcMultiBlckAvg(std::function<void(flt64* restrict SSIMs, const uint16
 
       //random tests
       CAPTURE(Description + fmt::format(" Random"));
-      Ref->zero(true);
-      Tst->zero(true);
+      Ref.zero(true);
+      Tst.zero(true);
 
       for(int32 n = 0; n < c_NumRandomTests; n++)
       {
-        State = xTestUtils::fillMidNoise(Ref->getAddr(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), b, 0, State);
-        State = xTestUtils::fillMidNoise(Tst->getAddr(), Tst->getStride(), Tst->getWidth(), Tst->getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), b, 0, State);
 
 
         std::fill(A.begin(), A.end(), std::numeric_limits<flt64>::quiet_NaN());
         std::fill(B.begin(), B.end(), std::numeric_limits<flt64>::quiet_NaN());
         for(int32 i = 0; i < BlocksPerBatch; i++)
         {
-          A[i] = xStructSimSTD::CalcBlckAvg(Tst->getAddr() + Stride * i, Ref->getAddr() + Stride * i, Tst->getStride(), Ref->getStride(), WndSize, C1, C2, CalcL);
+          A[i] = xStructSimSTD::CalcBlckAvg(Tst.getAddr() + Stride * i, Ref.getAddr() + Stride * i, Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
         }
-        CalcMultiBlckAvg(B.data(), Tst->getAddr(), Ref->getAddr(), Tst->getStride(), Ref->getStride(), C1, C2, CalcL);
+        CalcMultiBlckAvg(B.data(), Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), C1, C2, CalcL);
         for(int32 i = 0; i < BlocksPerBatch; i++)
         {
           CHECK(A[i] == B[i]);
@@ -294,6 +313,238 @@ void testCalcMultiBlckAvg(std::function<void(flt64* restrict SSIMs, const uint16
       }
     }
   }
+}
+
+//===============================================================================================================================================================================================================
+// Mask SSIM
+//===============================================================================================================================================================================================================
+using fCalcSSM = std::function<tSSIMM(const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 StrideT, int32 StrideR, int32 StrideM, int32 WndSize, flt64 C1, flt64 C2, bool CalcL)>;
+
+void testCalcRglrM(fCalcSSM CalcRglrTst, fCalcSS CalcRglrRef, bool CalcL, flt64 Tolerance)
+{
+  uint32 State = xTestUtils::c_XorShiftSeed;
+
+  int32V2 Size = { xStructSimConsts::c_FilterSize, xStructSimConsts::c_FilterSize };
+
+  for(const int32 m : c_Margs)
+  {
+    for(const int32 b : c_BitDs)
+    {
+      const std::string Description = fmt::format("SizeXxY={}x{} Margin={} BitDepth={}", Size.getX(), Size.getY(), m, b);
+
+      //buffers create
+      xPlane<uint16> Ref(Size, b, m);
+      xPlane<uint16> Tst(Size, b, m);
+      xPlane<uint16> Msk(Size, b, m);
+
+      int32 OffT = (5 * Tst.getStride() + 5);
+      int32 OffR = (5 * Ref.getStride() + 5);
+      int32 OffM = (5 * Msk.getStride() + 5);
+
+      //deterministic tests
+      CAPTURE(Description + fmt::format(" Deterministic"));
+      uint16 Max = (uint16)xBitDepth2MaxValue(b);
+      uint16 Mid = (uint16)xBitDepth2MidValue(b);
+      std::vector<uint16V2> VPs{ { 0,Max }, { Max,0 }, { Mid,0 }, { Mid,0 }, { Max,Mid }, { Max,Mid } };
+
+      flt64 C1 = xPow2(xStructSimConsts::c_K1<flt64> * (flt64)Max);
+      flt64 C2 = xPow2(xStructSimConsts::c_K2<flt64> * (flt64)Max);
+
+      for(const uint16V2 TestVals : VPs)
+      {
+        Ref.zero(true);
+        Tst.zero(true);
+        Msk.zero(true);
+        Ref.fill(TestVals[0], false);
+        Tst.fill(TestVals[1], false);
+
+        flt64 RefSSIM = CalcRglrRef(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        for(int32 MskValue : c_MskVs)
+        {          
+          Msk.fill((uint16)MskValue);          
+          auto [SSIM, Weight] = CalcRglrTst(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Msk.getAddr() + OffM, Tst.getStride(), Ref.getStride(), Msk.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+          if(MskValue == 0)
+          {
+            CHECK(std::isnan(SSIM));
+            CHECK(Weight == 0.0);
+          }
+          else
+          {
+            flt64 RefWeight = (flt64)MskValue / (flt64)xStructSimConsts::c_MaskMaxVal;
+            CHECK(xIsApproximatelyEqual(RefSSIM  , SSIM  , Tolerance));
+            CHECK(xIsApproximatelyEqual(RefWeight, Weight, Tolerance));
+          }
+        }
+      }
+
+      //gradient test
+      CAPTURE(Description + fmt::format(" Gradient"));
+      Ref.zero(true);
+      Tst.zero(true);
+      Msk.zero(true);
+      xTestUtils::fillGradientXY(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), Ref.getBitDepth(), 0);
+      for(int32 GradOffset = 0; GradOffset <= 10; GradOffset++)
+      {          
+        xTestUtils::fillGradientXY(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), Tst.getBitDepth(), GradOffset);
+
+        flt64 RefSSIM = CalcRglrRef(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        for(int32 MskValue : c_MskVs)
+        {
+          Msk.fill((uint16)MskValue);
+          auto [SSIM, Weight] = CalcRglrTst(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Msk.getAddr() + OffM, Tst.getStride(), Ref.getStride(), Msk.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+          if(MskValue == 0)
+          {
+            CHECK(std::isnan(SSIM));
+            CHECK(Weight == 0.0);
+          }
+          else
+          {
+            flt64 RefWeight = (flt64)MskValue / (flt64)xStructSimConsts::c_MaskMaxVal;
+            CHECK(xIsApproximatelyEqual(RefSSIM  , SSIM  , Tolerance));
+            CHECK(xIsApproximatelyEqual(RefWeight, Weight, Tolerance));
+          }
+        }
+      }
+
+      //random tests
+      CAPTURE(Description + fmt::format(" Random"));
+      Ref.zero(true);
+      Tst.zero(true);
+      for(int32 n = 0; n < c_NumRandomTests; n++)
+      {
+        State = xTestUtils::fillMidNoise(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), b, 0, State);
+
+        flt64 RefSSIM = CalcRglrRef(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Tst.getStride(), Ref.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+        for(int32 MskValue : c_MskVs)
+        {
+          Msk.fill((uint16)MskValue);
+          auto [SSIM, Weight] = CalcRglrTst(Tst.getAddr() + OffT, Ref.getAddr() + OffR, Msk.getAddr() + OffM, Tst.getStride(), Ref.getStride(), Msk.getStride(), xStructSimConsts::c_FilterSize, C1, C2, CalcL);
+          if(MskValue == 0)
+          {
+            CHECK(std::isnan(SSIM));
+            CHECK(Weight == 0.0);
+          }
+          else
+          {
+            flt64 RefWeight = (flt64)MskValue / (flt64)xStructSimConsts::c_MaskMaxVal;
+            CHECK(xIsApproximatelyEqual(RefSSIM  , SSIM  , Tolerance));
+            CHECK(xIsApproximatelyEqual(RefWeight, Weight, Tolerance));
+          }
+        }
+      }
+    }
+  }
+}
+void testCalcBlckAvgM(fCalcSSM CalcBlckAvgTst, fCalcSS CalcBlckAvgRef, int32 WndSize, bool CalcL, flt64 Tolerance)
+{
+  uint32 State = xTestUtils::c_XorShiftSeed;
+
+  int32V2 Size = { WndSize, WndSize };
+
+  for(const int32 m : c_Margs)
+  {
+    for(const int32 b : c_BitDs)
+    {
+      const std::string Description = fmt::format("SizeXxY={}x{} Margin={} BitDepth={}", Size.getX(), Size.getY(), m, b);
+
+      //buffers create
+      xPlane<uint16> Ref(Size, b, m);
+      xPlane<uint16> Tst(Size, b, m);
+      xPlane<uint16> Msk(Size, b, m);
+
+      //deterministic tests
+      CAPTURE(Description + fmt::format(" Deterministic"));
+      uint16 Max = (uint16)xBitDepth2MaxValue(b);
+      uint16 Mid = (uint16)xBitDepth2MidValue(b);
+      std::vector<uint16V2> VPs{ {0,Max}, {Max,0}, {Mid,0}, {Mid,0}, {Max,Mid}, {Max,Mid} };
+
+      flt64 C1 = xPow2(xStructSimConsts::c_K1<flt64> *(flt64)Max);
+      flt64 C2 = xPow2(xStructSimConsts::c_K2<flt64> *(flt64)Max);
+
+      for(const uint16V2 TestVals : VPs)
+      {
+        Ref.zero(true);
+        Tst.zero(true);
+        Msk.zero(true);
+        Ref.fill(TestVals[0], false);
+        Tst.fill(TestVals[1], false);
+
+        flt64 RefSSIM = CalcBlckAvgRef(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        for(int32 MskValue : c_MskVs)
+        {          
+          Msk.fill((uint16)MskValue);          
+          auto [SSIM, Weight] = CalcBlckAvgTst(Tst.getAddr(), Ref.getAddr(), Msk.getAddr(), Tst.getStride(), Ref.getStride(), Msk.getStride(), WndSize, C1, C2, CalcL);
+          if(MskValue == 0)
+          {
+            CHECK(std::isnan(SSIM));
+            CHECK(Weight == 0.0);
+          }
+          else
+          {
+            flt64 RefWeight = (flt64)MskValue / (flt64)xStructSimConsts::c_MaskMaxVal;
+            CHECK(xIsApproximatelyEqual(RefSSIM  , SSIM  , Tolerance));
+            CHECK(xIsApproximatelyEqual(RefWeight, Weight, Tolerance));
+          }
+        }
+      }
+
+      //gradient test
+      CAPTURE(Description + fmt::format(" Gradient"));
+      Ref.zero(true);
+      Tst.zero(true);
+      xTestUtils::fillGradientXY(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), Ref.getBitDepth(), 0);
+      for(int32 GradOffset = 0; GradOffset <= 10; GradOffset++)
+      {          
+        xTestUtils::fillGradientXY(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), Tst.getBitDepth(), GradOffset);
+        flt64 RefSSIM = CalcBlckAvgRef(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        for(int32 MskValue : c_MskVs)
+        {
+          Msk.fill((uint16)MskValue);
+          auto [SSIM, Weight] = CalcBlckAvgTst(Tst.getAddr(), Ref.getAddr(), Msk.getAddr(), Tst.getStride(), Ref.getStride(), Msk.getStride(), WndSize, C1, C2, CalcL);
+          if(MskValue == 0)
+          {
+            CHECK(std::isnan(SSIM));
+            CHECK(Weight == 0.0);
+          }
+          else
+          {
+            flt64 RefWeight = (flt64)MskValue / (flt64)xStructSimConsts::c_MaskMaxVal;
+            CHECK(xIsApproximatelyEqual(RefSSIM  , SSIM  , Tolerance));
+            CHECK(xIsApproximatelyEqual(RefWeight, Weight, Tolerance));
+          }
+        }
+      }
+
+      //random tests
+      CAPTURE(Description + fmt::format(" Random"));
+      Ref.zero(true);
+      Tst.zero(true);
+      for(int32 n = 0; n < c_NumRandomTests; n++)
+      {
+        State = xTestUtils::fillMidNoise(Ref.getAddr(), Ref.getStride(), Ref.getWidth(), Ref.getHeight(), b, 0, State);
+        State = xTestUtils::fillMidNoise(Tst.getAddr(), Tst.getStride(), Tst.getWidth(), Tst.getHeight(), b, 0, State);
+
+        flt64 RefSSIM = CalcBlckAvgRef(Tst.getAddr(), Ref.getAddr(), Tst.getStride(), Ref.getStride(), WndSize, C1, C2, CalcL);
+        for(int32 MskValue : c_MskVs)
+        {
+          Msk.fill((uint16)MskValue);
+          auto [SSIM, Weight] = CalcBlckAvgTst(Tst.getAddr(), Ref.getAddr(), Msk.getAddr(), Tst.getStride(), Ref.getStride(), Msk.getStride(), WndSize, C1, C2, CalcL);
+          if(MskValue == 0)
+          {
+            CHECK(std::isnan(SSIM));
+            CHECK(Weight == 0.0);
+          }
+          else
+          {
+            flt64 RefWeight = (flt64)MskValue / (flt64)xStructSimConsts::c_MaskMaxVal;
+            CHECK(xIsApproximatelyEqual(RefSSIM  , SSIM  , Tolerance));
+            CHECK(xIsApproximatelyEqual(RefWeight, Weight, Tolerance));
+          }
+        }
+      }
+    }
+  }  
 }
 
 //===============================================================================================================================================================================================================
@@ -314,6 +565,16 @@ TEST_CASE("xStructSimSTD")
   {
     testCalcBlckAvg(xStructSimSTD::CalcBlckAvg, d, true );
     testCalcBlckAvg(xStructSimSTD::CalcBlckAvg, d, false);
+  }
+
+  //mask SSIM
+  testCalcRglrM(xStructSimSTD::CalcRglrAvgM, xStructSimSTD::CalcRglrAvg, true , c_ToleranceSSIM_Averaged);
+  testCalcRglrM(xStructSimSTD::CalcRglrAvgM, xStructSimSTD::CalcRglrAvg, false, c_ToleranceSSIM_Averaged);
+
+  for(const int32 d : c_Dimms)
+  {
+    testCalcBlckAvgM(xStructSimSTD::CalcBlckAvgM, xStructSimSTD::CalcBlckAvg, d, true , c_ToleranceSSIM_Averaged);
+    testCalcBlckAvgM(xStructSimSTD::CalcBlckAvgM, xStructSimSTD::CalcBlckAvg, d, false, c_ToleranceSSIM_Averaged);
   }
 }
 

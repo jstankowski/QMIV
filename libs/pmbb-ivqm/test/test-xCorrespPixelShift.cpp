@@ -23,7 +23,7 @@ using namespace PMBB_NAMESPACE;
 
 //===============================================================================================================================================================================================================
 
-static const std::vector<int32> c_Dimms = { 64, 96, 128 };
+static const std::vector<int32> c_Dimms = { 15, 16, 17, 63, 64, 64 };
 static const std::vector<int32> c_BitDs = { 8, 10, 14 };
 constexpr int32 c_Margin   = 8;
 constexpr int32 c_NumIters = 2;
@@ -193,8 +193,76 @@ void testGenShftCompPic(fGenShftCompRowP GenShftCompRowP, fGenShftCompRowI GenSh
       }
     }
   }
-
 }
+
+void testGenShftCompPic(fGenShftCompRowP GenShftCompRowTst, fGenShftCompRowP GenShftCompRowRef)
+{
+  uint32 State = xTestUtils::c_XorShiftSeed;
+
+  for(const int32 y : c_Dimms)
+  {
+    for(const int32 x : c_Dimms)
+    {
+      int32V2 Size = { x, y };
+
+      for(const int32 b : c_BitDs)
+      {
+        xPicP Org      (Size, b, c_Margin);
+        xPicP Mod      (Size, b, c_Margin);
+        xPicP RefOrgSCP(Size, b, c_Margin);
+        xPicP RefModSCP(Size, b, c_Margin);
+        xPicP TstOrgSCP(Size, b, c_Margin);
+        xPicP TstModSCP(Size, b, c_Margin);
+
+        xPerlinNoise::fillPerlinNoiseI(Org.getAddr(eCmp::C0), Org.getStride(), Org.getWidth(), Org.getHeight(), Org.getBitDepth(), 8, State); State = xTestUtils::xXorShift32(State);
+        xPerlinNoise::fillPerlinNoiseI(Org.getAddr(eCmp::C1), Org.getStride(), Org.getWidth(), Org.getHeight(), Org.getBitDepth(), 8, State); State = xTestUtils::xXorShift32(State);
+        xPerlinNoise::fillPerlinNoiseI(Org.getAddr(eCmp::C2), Org.getStride(), Org.getWidth(), Org.getHeight(), Org.getBitDepth(), 8, State); State = xTestUtils::xXorShift32(State);
+        Org.extend();
+
+        for(int32 Iter = 0; Iter < c_NumIters; Iter++)
+        {
+          xTestUtilsIVQM::addBlockNoise(Mod.getAddr(eCmp::C0), Org.getAddr(eCmp::C0), Mod.getStride(), Org.getStride(), Org.getWidth(), Org.getHeight(), Org.getBitDepth(), State);
+          (Iter == 0) ? Mod.copy(&Org, eCmp::C1) : xTestUtilsIVQM::addBlockNoise(Mod.getAddr(eCmp::C1), Org.getAddr(eCmp::C1), Mod.getStride(), Org.getStride(), Org.getWidth(), Org.getHeight(), Org.getBitDepth(), State);
+          (Iter == 0) ? Mod.copy(&Org, eCmp::C2) : xTestUtilsIVQM::addBlockNoise(Mod.getAddr(eCmp::C2), Org.getAddr(eCmp::C2), Mod.getStride(), Org.getStride(), Org.getWidth(), Org.getHeight(), Org.getBitDepth(), State);
+          Mod.extend();
+
+          for(int32V4 GCD : c_GCDs)
+          {
+            RefOrgSCP.clear();
+            RefModSCP.clear();
+            xTestGenShftCompPicP(&RefOrgSCP, &Org, &Mod, GCD, 2, { 4,1,1,0 }, GenShftCompRowRef);
+            xTestGenShftCompPicP(&RefModSCP, &Mod, &Org, GCD, 2, { 4,1,1,0 }, GenShftCompRowRef);
+
+            TstOrgSCP.clear();
+            TstModSCP.clear();
+            xTestGenShftCompPicP(&TstOrgSCP, &Org, &Mod, GCD, 2, { 4,1,1,0 }, GenShftCompRowTst);
+            xTestGenShftCompPicP(&TstModSCP, &Mod, &Org, GCD, 2, { 4,1,1,0 }, GenShftCompRowTst);
+
+            for(int32 c = 0; c < 3; c++)
+            {
+              CHECK(xTestUtils::isSameBuffer(TstOrgSCP.getBuffer((eCmp)c), RefOrgSCP.getBuffer((eCmp)c), RefOrgSCP.getBuffNumPels(), true));
+              CHECK(xTestUtils::isSameBuffer(TstModSCP.getBuffer((eCmp)c), RefModSCP.getBuffer((eCmp)c), RefModSCP.getBuffNumPels(), true));
+            }
+
+            uint64V4 SSDsA = xTestCalcDistAsymmetricPicP(&Mod, &Org, GCD, 2, { 4,1,1,0 }, static_cast<pCalcDistAsymmetricRowP>(xCorrespPixelShiftSTD::CalcDistAsymmetricRow));
+            uint64V4 SSDsB = xTestCalcDistAsymmetricPicP(&Org, &Mod, GCD, 2, { 4,1,1,0 }, static_cast<pCalcDistAsymmetricRowP>(xCorrespPixelShiftSTD::CalcDistAsymmetricRow));
+
+            uint64V4 TstSSDsA = xTestUtilsIVQM::calcPicSSD(&Mod, &RefOrgSCP);
+            uint64V4 TstSSDsB = xTestUtilsIVQM::calcPicSSD(&Org, &RefModSCP);
+            uint64V4 RefSSDsA = xTestUtilsIVQM::calcPicSSD(&Mod, &RefOrgSCP);
+            uint64V4 RefSSDsB = xTestUtilsIVQM::calcPicSSD(&Org, &RefModSCP);
+            CHECK(RefSSDsA == SSDsA);
+            CHECK(RefSSDsB == SSDsB);
+            CHECK(TstSSDsA == SSDsA);
+            CHECK(TstSSDsB == SSDsB);
+
+          }
+        } //iter
+      } //b 
+    } //size x
+  } //size y
+}
+
 
 //===============================================================================================================================================================================================================
 
@@ -207,16 +275,32 @@ TEST_CASE("xCorrespPixelShiftSTD")
 #if X_SIMD_CAN_USE_SSE
 TEST_CASE("xCorrespPixelShiftSSE")
 {
-  testCalcDistAsymmetricRow(nullptr, static_cast<pCalcDistAsymmetricRowI>(xCorrespPixelShiftSSE::CalcDistAsymmetricRow));
-  testGenShftCompPic       (nullptr, static_cast<pGenShftCompRowI       >(xCorrespPixelShiftSSE::GenShftCompRow       ));
+  testGenShftCompPic(xCorrespPixelShiftSSE::GenShftCompRowI16, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
+  testGenShftCompPic(xCorrespPixelShiftSSE::GenShftCompRowU32, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
 }
 #endif //X_SIMD_CAN_USE_SSE
+
+#if X_SIMD_CAN_USE_AVX
+TEST_CASE("xCorrespPixelShiftAVX")
+{
+  testGenShftCompPic(xCorrespPixelShiftAVX::GenShftCompRowI16, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
+  testGenShftCompPic(xCorrespPixelShiftAVX::GenShftCompRowU32, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
+}
+#endif //X_SIMD_CAN_USE_AVX
+
+#if X_SIMD_CAN_USE_AVX512
+TEST_CASE("xCorrespPixelShiftAVX512")
+{
+  testGenShftCompPic(xCorrespPixelShiftAVX512::GenShftCompRowI16, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
+  testGenShftCompPic(xCorrespPixelShiftAVX512::GenShftCompRowU32, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
+}
+#endif //X_SIMD_CAN_USE_AVX512
 
 #if X_SIMD_CAN_USE_NEON
 TEST_CASE("xCorrespPixelShiftNEON")
 {
-  testCalcDistAsymmetricRow(nullptr, static_cast<pCalcDistAsymmetricRowI>(xCorrespPixelShiftNEON::CalcDistAsymmetricRow));
-  testGenShftCompPic       (nullptr, static_cast<pGenShftCompRowI       >(xCorrespPixelShiftNEON::GenShftCompRow       ));
+  testGenShftCompPic(xCorrespPixelShiftNEON::GenShftCompRowI16, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
+  testGenShftCompPic(xCorrespPixelShiftNEON::GenShftCompRowU32, static_cast<pGenShftCompRowP>(xCorrespPixelShiftSTD::GenShftCompRow));
 }
 #endif //X_SIMD_CAN_USE_NEON
 

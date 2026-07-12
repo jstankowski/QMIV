@@ -56,30 +56,35 @@ public:
   static inline  int64 CalcSD (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX512::CalcSD (Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSAD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX512::CalcSAD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX512::CalcSSD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
+  static inline tSDSSD CalcSSS(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX512::CalcSSS(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
 
 #elif X_CAN_USE_AVX
 
   static inline  int64 CalcSD (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX::CalcSD (Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSAD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX::CalcSAD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX::CalcSSD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
+  static inline tSDSSD CalcSSS(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionAVX::CalcSSS(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
 
 #elif X_CAN_USE_SSE
 
   static inline  int64 CalcSD (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSSE::CalcSD (Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSAD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSSE::CalcSAD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSSE::CalcSSD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
+  static inline tSDSSD CalcSSS(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSSE::CalcSSS(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
 
 #elif X_CAN_USE_NEON
 
   static inline  int32 CalcSD (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionNEON::CalcSD (Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint32 CalcSAD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionNEON::CalcSAD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionNEON::CalcSSD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
+  static inline tSDSSD CalcSSS(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSTD ::CalcSSS(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
 
 #else
 
   static inline  int64 CalcSD (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSTD::CalcSD (Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSAD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSTD::CalcSAD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
   static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSTD::CalcSSD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
+  static inline tSDSSD CalcSSS(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return xDistortionSTD::CalcSSS(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
 
 #endif
 
@@ -87,11 +92,12 @@ public:
   static inline uint64 CalcSAD(const uint16* Tst, const uint16* Ref, int32 Area, int32 BitDepth) { return CalcSAD(Tst, Ref, NOT_VALID, NOT_VALID, Area, 1, BitDepth); }
   static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 Area, int32 BitDepth) { return CalcSSD(Tst, Ref, NOT_VALID, NOT_VALID, Area, 1, BitDepth); }
 
-  static inline  int64 CalcWeightedSD (const uint16* Tst, const uint16* Ref, const uint16* Mask, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xDistortionSTD::CalcWeightedSD (Tst, Ref, Mask, TstStride, RefStride, MskStride, Width,  Height); }
-  static inline uint64 CalcWeightedSSD(const uint16* Tst, const uint16* Ref, const uint16* Mask, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xDistortionSTD::CalcWeightedSSD(Tst, Ref, Mask, TstStride, RefStride, MskStride, Width,  Height); }
+  static inline  int64 CalcWghtSD (const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xDistortionSTD::CalcWghtSD (Tst, Ref, Msk, TstStride, RefStride, MskStride, Width, Height); }
+  static inline uint64 CalcWghtSSD(const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xDistortionSTD::CalcWghtSSD(Tst, Ref, Msk, TstStride, RefStride, MskStride, Width, Height); }
+  static inline tSDSSD CalcWghtSSS(const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xDistortionSTD::CalcWghtSSS(Tst, Ref, Msk, TstStride, RefStride, MskStride, Width, Height); }
 
-  static inline  int64 CalcWeightedSD (const uint16* Tst, const uint16* Ref, const uint16* Mask, int32 Area) { return CalcWeightedSD (Tst, Ref, Mask, NOT_VALID, NOT_VALID, NOT_VALID, Area, 1); }
-  static inline uint64 CalcWeightedSSD(const uint16* Tst, const uint16* Ref, const uint16* Mask, int32 Area) { return CalcWeightedSSD(Tst, Ref, Mask, NOT_VALID, NOT_VALID, NOT_VALID, Area, 1); }
+  static inline  int64 CalcWghtSD (const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 Area) { return CalcWghtSD (Tst, Ref, Msk, NOT_VALID, NOT_VALID, NOT_VALID, Area, 1); }
+  static inline uint64 CalcWghtSSD(const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 Area) { return CalcWghtSSD(Tst, Ref, Msk, NOT_VALID, NOT_VALID, NOT_VALID, Area, 1); }
 };
 
 //===============================================================================================================================================================================================================

@@ -119,7 +119,7 @@ flt64 xWSPSNR::xCalcCmpWSPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP* 
   uint64* RowSSDs = m_RowDistortions[(int32)CmpId].data();
   for(int32 y = 0; y < Height; y++)
   {
-    uint64 RowSSD = xDistortion::CalcWeightedSSD(RefPtr, TstPtr, MskPtr, Width);
+    uint64 RowSSD = xDistortion::CalcWghtSSD(RefPtr, TstPtr, MskPtr, Width);
     RowSSDs[y] = RowSSD;
     TstPtr += TstStride;
     RefPtr += RefStride;

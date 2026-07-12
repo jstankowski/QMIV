@@ -510,6 +510,7 @@ TEST_CASE("xDistortionSTD")
   testDistortionSD (&xDistortionSTD::CalcSD16 , 16);
   testDistortionSAD(&xDistortionSTD::CalcSAD16, 16);
   testDistortionSSD(&xDistortionSTD::CalcSSD16, 16);
+  testDistortionSSS(&xDistortionSTD::CalcSSS16, 16);
 }
 
 #if X_SIMD_CAN_USE_SSE
@@ -519,6 +520,7 @@ TEST_CASE("xDistortionSSE")
   testDistortionSD (&xDistortionSSE::CalcSD16 , 16);
   testDistortionSAD(&xDistortionSSE::CalcSAD16, 16);
   testDistortionSSD(&xDistortionSSE::CalcSSD14, 14);
+  testDistortionSSS(&xDistortionSSE::CalcSSS14, 14);
 }
 #endif //X_SIMD_CAN_USE_SSE
 
@@ -529,6 +531,7 @@ TEST_CASE("xDistortionAVX")
   testDistortionSD (&xDistortionAVX::CalcSD16 , 16);
   testDistortionSAD(&xDistortionAVX::CalcSAD16, 16);
   testDistortionSSD(&xDistortionAVX::CalcSSD14, 14);
+  testDistortionSSS(&xDistortionAVX::CalcSSS14, 14);
 }
 #endif //X_SIMD_CAN_USE_AVX
 
@@ -539,6 +542,7 @@ TEST_CASE("xDistortionAVX512")
   testDistortionSD (&xDistortionAVX512::CalcSD16 , 16);
   testDistortionSAD(&xDistortionAVX512::CalcSAD16, 16);
   testDistortionSSD(&xDistortionAVX512::CalcSSD14, 14);
+  testDistortionSSS(&xDistortionAVX512::CalcSSS14, 14);
 }
 #endif //X_SIMD_CAN_USE_AVX512
 
@@ -550,6 +554,7 @@ TEST_CASE("xDistortionNEON")
   testDistortionSAD(&xDistortionNEON::CalcSAD16, 16);
   testDistortionSSD(&xDistortionNEON::CalcSSD14, 14);
   testDistortionSSD(&xDistortionNEON::CalcSSD16, 14);
+  testDistortionSSS(&xDistortionNEON::CalcSSS14, 14);
 }
 #endif //X_SIMD_CAN_USE_NEON
 

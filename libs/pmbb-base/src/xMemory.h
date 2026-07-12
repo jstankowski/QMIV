@@ -81,6 +81,8 @@ public:
   static inline uint64 getBestEffortSizePageBase    () { return c_MemSizePageBase     ? c_MemSizePageBase     : xc_MemSizePageDef    ; }
   static inline uint64 getBestEffortLog2SizePageBase() { return c_Log2MemSizePageBase ? c_Log2MemSizePageBase : xc_Log2MemSizePageDef; }
 
+  static inline uint64 RoundUpToPageSizeBase(uint64 Value) { return xRoundUpToNearestMultiple(Value, getBestEffortLog2SizePageBase()); }
+
 protected:
   static uint64 xCvtSize(int64 Size) { return Size != NOT_VALID ? Size : 0; }
   static uint64 xLog2   (uint64 Val) { return (Val > 1) ? 1 + xLog2(Val >> 1) : 0; } //positive integer only

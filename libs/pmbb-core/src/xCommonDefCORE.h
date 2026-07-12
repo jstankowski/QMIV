@@ -270,10 +270,11 @@ enum class eCmp : int32 //component identifier
   CB = 1,     //Chroma Cb (U)
   CR = 2,     //Chroma Cr (V)
 
-  //R G B
+  //R G B (A)
   R = 0,
   G = 1,
   B = 2,
+  A = 3,
 };
 
 enum class eCrF : int16 //chroma format

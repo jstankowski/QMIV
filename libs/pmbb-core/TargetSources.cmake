@@ -13,14 +13,17 @@ set(SRCLIST_CLR_C src/xColorSpaceCoeff.cpp src/xColorSpace.cpp src/xColorSpaceST
 set(SRCLIST_PIC_H src/xPicCommon.h   src/xPic.h   src/xPlane.h  )
 set(SRCLIST_PIC_C src/xPicCommon.cpp src/xPic.cpp src/xPlane.cpp)
 
-set(SRCLIST_THREAD_H src/xEvent.h src/xQueue.h src/xRing.h src/xThreadPool.h  )
-set(SRCLIST_THREAD_C                                       src/xThreadPool.cpp)
+set(SRCLIST_BFR_H src/xBfrCommon.h src/xBfrPic.h  )
+set(SRCLIST_BFR_C                  src/xBfrPic.cpp)
 
-set(SRCLIST_IO_H src/xSeq.h   src/xStream.h  )
-set(SRCLIST_IO_C src/xSeq.cpp src/xStream.cpp)
+set(SRCLIST_THREAD_H src/xEvent.h src/xQueue.h src/xRing.h src/xThreadPool.h   src/xMultiThreaded.h)
+set(SRCLIST_THREAD_C                                       src/xThreadPool.cpp                     )
 
-set(SRCLIST_MATH_H src/xKBNS.h  )
-set(SRCLIST_MATH_C src/xKBNS.cpp)
+set(SRCLIST_IO_H src/xInOutResult.h   src/xSeq.h   src/xStream.h   src/xFileListUtils.h  )
+set(SRCLIST_IO_C src/xInOutResult.cpp src/xSeq.cpp src/xStream.cpp src/xFileListUtils.cpp)
+
+set(SRCLIST_MATH_H src/xKBNS.h   src/xMatrix.h   src/xMatrixUtils.h   src/xQuaternion.h  )
+set(SRCLIST_MATH_C src/xKBNS.cpp src/xMatrix.cpp src/xMatrixUtils.cpp src/xQuaternion.cpp)
 
 set(SRCLIST_UTILS_H src/xVec.h src/xHelpersSIMD.h src/xHelpersFLT.h src/xFmtScn.h   src/xTestUtils.h   src/xTimeUtils.h  )
 set(SRCLIST_UTILS_C                                                 src/xFmtScn.cpp src/xTestUtils.cpp src/xTimeUtils.cpp)

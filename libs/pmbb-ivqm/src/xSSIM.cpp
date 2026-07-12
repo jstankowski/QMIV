@@ -36,7 +36,7 @@ std::string xSSIM::xModeToStr(eMode Mode)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void xSSIM::create(int32V2 PicSize, int32 BitDepth, int32 Margin, bool EnableMS)
+void xSSIM::create(int32V2 PicSize, int32 BitDepth, int32 Margin, bool EnableMS, bool EnableMask)
 {
   m_PicSize    = PicSize;
   m_BitDepth   = BitDepth;
@@ -53,7 +53,8 @@ void xSSIM::create(int32V2 PicSize, int32 BitDepth, int32 Margin, bool EnableMS)
 
   for(int32 CmpIdx = 0; CmpIdx < 4; CmpIdx++)
   { 
-    m_RowSums[CmpIdx].resize(m_PicSize.getY(), 0.0);
+    m_RowSumsSSIM[CmpIdx].resize(m_PicSize.getY(), 0.0);
+    if(EnableMask) { m_RowSumsWght[CmpIdx].resize(m_PicSize.getY(), 0.0); }
   }
 
   if(EnableMS)
@@ -65,6 +66,10 @@ void xSSIM::create(int32V2 PicSize, int32 BitDepth, int32 Margin, bool EnableMS)
       int32V2 NewSize = LastSize >> 1;
       m_SubPicTst[i] = new xPicP(NewSize, BitDepth, Margin);
       m_SubPicRef[i] = new xPicP(NewSize, BitDepth, Margin);
+      if(EnableMask)
+      {
+        m_SubPicMsk[i] = new xPicP(NewSize, BitDepth, Margin);
+      }
       LastSize = NewSize;
     }
   }
@@ -80,6 +85,7 @@ void xSSIM::destroy()
   {
     if(m_SubPicTst[i]) { m_SubPicTst[i]->destroy(); delete m_SubPicTst[i]; m_SubPicTst[i] = nullptr; }
     if(m_SubPicRef[i]) { m_SubPicRef[i]->destroy(); delete m_SubPicRef[i]; m_SubPicRef[i] = nullptr; }
+    if(m_SubPicMsk[i]) { m_SubPicMsk[i]->destroy(); delete m_SubPicMsk[i]; m_SubPicMsk[i] = nullptr; }
   }
 }
 void xSSIM::setStructSimParams(eMode Mode, eMrgExt MarginMode, int32 BlockSize, int32 WndStride)
@@ -93,11 +99,11 @@ void xSSIM::setStructSimParams(eMode Mode, eMrgExt MarginMode, int32 BlockSize, 
 
   switch(m_StrSimMode)
   {
-  case eMode::RegularGaussianFlt: m_CalcPtr = xStructSim::CalcRglrFlt; m_CalcPtrMsk = xStructSim::CalcRglrFltM; break;
+  case eMode::RegularGaussianFlt: m_CalcPtr = xStructSim::CalcRglrFlt; m_CalcPtrMsk = nullptr                 ; break;
   case eMode::RegularGaussianInt: m_CalcPtr = xStructSim::CalcRglrInt; m_CalcPtrMsk = xStructSim::CalcRglrIntM; break;
   case eMode::RegularAveraged   : m_CalcPtr = xStructSim::CalcRglrAvg; m_CalcPtrMsk = xStructSim::CalcRglrAvgM; break;
   case eMode::BlockGaussianInt  : m_CalcPtr = xStructSim::CalcBlckInt; m_CalcPtrMsk = nullptr                 ; break;
-  case eMode::BlockAveraged     : m_CalcPtr = xStructSim::CalcBlckAvg; m_CalcPtrMsk = nullptr                 ; break;
+  case eMode::BlockAveraged     : m_CalcPtr = xStructSim::CalcBlckAvg; m_CalcPtrMsk = xStructSim::CalcBlckAvgM; break;
   default: assert(0); break;
   }
 
@@ -139,14 +145,39 @@ flt64V4 xSSIM::calcPicMSSSIM(const xPicP* Tst, const xPicP* Ref)
 
   return CompoundScore;
 }
-flt64V4 xSSIM::calcPicSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, int32 NumNonMasked)
+flt64V4 xSSIM::calcPicSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk)
 {
   assert(Ref != nullptr && Tst != nullptr && Msk != nullptr && Ref->isCompatible(Tst) && Ref->isSameSize(m_PicSize) && Ref->isSameBitDepth(m_BitDepth) && Msk->isSameSize(m_PicSize));
 
-  if(NumNonMasked < 0) { NumNonMasked = xPixelOps::CountNonZero(Msk->getAddr(eCmp::LM), Msk->getStride(), Msk->getWidth(), Msk->getHeight()); }
-
-  flt64V4 SSIM = xCalcPicSSIMM(Tst, Ref, Msk, NumNonMasked, false);
+  flt64V4 SSIM = xCalcPicSSIMM(Tst, Ref, Msk, true);
   return SSIM;
+}
+flt64V4 xSSIM::calcPicMSSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk)
+{
+  assert(Ref != nullptr && Tst != nullptr && Msk != nullptr && Ref->isCompatible(Tst) && Ref->isSameSize(m_PicSize) && Ref->isSameBitDepth(m_BitDepth) && Msk->isSameSize(m_PicSize));
+
+  std::array<flt64V4, c_NumMultiScales> SubScores; SubScores.fill(xMakeVec4<flt64>(0));
+
+  SubScores[0] = xCalcPicSSIMM(Tst, Ref, Msk, m_NumScales==1);
+  for(int32 i = 1; i < m_NumScales; i++)
+  {
+    if(i == 1) { xDownsampleMsk(m_SubPicMsk[i], Msk             ); xDownsamplePicWght(m_SubPicTst[i], Tst             , Msk             ); xDownsamplePicWght(m_SubPicRef[i], Ref             , Msk               ); }
+    else       { xDownsampleMsk(m_SubPicMsk[i], m_SubPicMsk[i-1]); xDownsamplePicWght(m_SubPicTst[i], m_SubPicTst[i-1], m_SubPicMsk[i-1]); xDownsamplePicWght(m_SubPicRef[i], m_SubPicRef[i-1], m_SubPicMsk[i - 1]); }
+
+    if(m_UseMargin) { m_SubPicTst[i]->extend(m_MrgExtMode); m_SubPicRef[i]->extend(m_MrgExtMode); m_SubPicMsk[i]->extend(m_MrgExtMode); }
+
+    SubScores[i] = xCalcPicSSIMM(m_SubPicTst[i], m_SubPicRef[i], m_SubPicMsk[i], i == m_NumScales - 1);
+  }
+
+  //Hint: sometimes SubScore can be negative, so do the same as pytorch - use ReLU to avoid (-0.sth)^Scale
+  std::array<flt64V4, c_NumMultiScales> m_CorrectedSubScores;
+  for(int32 i = 0; i < c_NumMultiScales; i++) { m_CorrectedSubScores[i] = SubScores[i].getVecReLU(); }
+
+  const std::array<flt64, c_NumMultiScales> MultiScaleExponentWeights = c_MultiScaleExponentWeights<flt64>[m_NumScales-1];
+  flt64V4 CompoundScore = xMakeVec4<flt64>(1);
+  for(int32 i = 0; i < m_NumScales; i++) { CompoundScore *= m_CorrectedSubScores[i].getVecPow1(MultiScaleExponentWeights[i]); }
+
+  return CompoundScore;
 }
 void xSSIM::visualizeSSIM(xPlane<uint16>* Vis, const xPicP* Tst, const xPicP* Ref, eCmp CmpId)
 {
@@ -212,25 +243,25 @@ flt64V4 xSSIM::xCalcPicSSIM(const xPicP* Tst, const xPicP* Ref, bool CalcL)
 }
 flt64 xSSIM::xCalcCmpSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, bool CalcL)
 {
-  memset(m_RowSums[(int32)CmpId].data(), 0, m_RowSums[(int32)CmpId].size() * sizeof(flt64));
+  memset(m_RowSumsSSIM[(int32)CmpId].data(), 0, m_RowSumsSSIM[(int32)CmpId].size() * sizeof(flt64));
 
   if(xc_USE_SSIM_MULTI_BLOCK && m_MultiBlockAvgBatchSize > 0)
   {
     for(int32 y = m_LoopBegY; y < m_LoopEndY; y += m_WndStride)
     {
-      m_ThPI->storeTask([this, &Tst, &Ref, CmpId, y, CalcL](int32) { m_RowSums[(int32)CmpId][y] = xCalcRowSSIM_MB(Tst, Ref, CmpId, y, CalcL); });
+      m_ThPI->storeTask([this, &Tst, &Ref, CmpId, y, CalcL](int32) { m_RowSumsSSIM[(int32)CmpId][y] = xCalcRowSSIM_MB(Tst, Ref, CmpId, y, CalcL); });
     }
   }
   else
   {
     for(int32 y = m_LoopBegY; y < m_LoopEndY; y += m_WndStride)
     {
-      m_ThPI->storeTask([this, &Tst, &Ref, CmpId, y, CalcL](int32) { m_RowSums[(int32)CmpId][y] = xCalcRowSSIM(Tst, Ref, CmpId, y, CalcL); });
+      m_ThPI->storeTask([this, &Tst, &Ref, CmpId, y, CalcL](int32) { m_RowSumsSSIM[(int32)CmpId][y] = xCalcRowSSIM(Tst, Ref, CmpId, y, CalcL); });
     }
   }
   m_ThPI->executeStoredTasks();
 
-  flt64 PicSumSSIM = xKBNS::Accumulate(m_RowSums[(int32)CmpId]);
+  flt64 PicSumSSIM = xKBNS::Accumulate(m_RowSumsSSIM[(int32)CmpId]);
   int64 NumActive  = (int64)m_NumUnitY * (int64)m_NumUnitX;
   flt64 SSIM       = PicSumSSIM / (flt64)NumActive;
   return SSIM;
@@ -283,35 +314,41 @@ flt64 xSSIM::xCalcRowSSIM_MB(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, con
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-flt64V4 xSSIM::xCalcPicSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, int32 NumNonMasked, bool CalcL)
+flt64V4 xSSIM::xCalcPicSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, bool CalcL)
 {
   assert(Ref != nullptr && Tst != nullptr && Ref->isCompatible(Tst) && Ref->getHeight() <= m_PicSize.getY() && Ref->isSameBitDepth(m_BitDepth));
-  assert(m_IsRegular && m_WndStride == 1);
   xInitLoopRanges(Ref->getWidth(), Ref->getHeight());
 
   flt64V4 SSIM = xMakeVec4<flt64>(0.0);
   for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
   {
-    SSIM[CmpIdx] = xCalcCmpSSIMM(Tst, Ref, Msk, (eCmp)CmpIdx, NumNonMasked, CalcL);
+    SSIM[CmpIdx] = xCalcCmpSSIMM(Tst, Ref, Msk, (eCmp)CmpIdx, CalcL);
   }
   return SSIM;
 }
-
-flt64 xSSIM::xCalcCmpSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId, int32 NumNonMasked, bool CalcL)
+flt64 xSSIM::xCalcCmpSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId, bool CalcL)
 {
-  memset(m_RowSums[(int32)CmpId].data(), 0, m_RowSums[(int32)CmpId].size() * sizeof(flt64));
+  memset(m_RowSumsSSIM[(int32)CmpId].data(), 0, m_RowSumsSSIM[(int32)CmpId].size() * sizeof(flt64));
+  memset(m_RowSumsWght[(int32)CmpId].data(), 0, m_RowSumsWght[(int32)CmpId].size() * sizeof(flt64));
 
   for(int32 y = m_LoopBegY; y < m_LoopEndY; y += m_WndStride)
   {
-    m_ThPI->storeTask([this, &Tst, &Ref, &Msk, CmpId, y, CalcL](int32) { m_RowSums[(int32)CmpId][y] = xCalcRowSSIMM(Tst, Ref, Msk, CmpId, y, CalcL); });
+    m_ThPI->storeTask([this, &Tst, &Ref, CmpId, y, CalcL](int32) { m_RowSumsSSIM[1][y] = xCalcRowSSIM(Tst, Ref, CmpId, y, CalcL); });
   }
   m_ThPI->executeStoredTasks();
 
-  flt64 PicSumSSIM = xKBNS::Accumulate(m_RowSums[(int32)CmpId]);
-  flt64 SSIM       = PicSumSSIM / (flt64)NumNonMasked;
+  for(int32 y = m_LoopBegY; y < m_LoopEndY; y += m_WndStride)
+  {
+    m_ThPI->storeTask([this, &Tst, &Ref, &Msk, CmpId, y, CalcL](int32) { std::tie(m_RowSumsSSIM[(int32)CmpId][y], m_RowSumsWght[(int32)CmpId][y]) = xCalcRowSSIMM(Tst, Ref, Msk, CmpId, y, CalcL); });
+  }
+  m_ThPI->executeStoredTasks();
+
+  flt64 PicSumSSIM = xKBNS::Accumulate(m_RowSumsSSIM[(int32)CmpId]);
+  flt64 PicSumWght = xKBNS::Accumulate(m_RowSumsWght[(int32)CmpId]);
+  flt64 SSIM       = PicSumSSIM / PicSumWght;
   return SSIM;
 }
-flt64 xSSIM::xCalcRowSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId, const int32 y, bool CalcL) const
+tSSIMM xSSIM::xCalcRowSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId, const int32 y, bool CalcL) const
 {
   const int32   TstStride = Tst->getStride();
   const int32   RefStride = Ref->getStride();
@@ -321,17 +358,22 @@ flt64 xSSIM::xCalcRowSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk,
   const uint16* MskPtr    = Msk->getAddr(eCmp::LM) + y * MskStride;
   
   xKBNS1 RowAccSSIM;
+  xKBNS1 RowAccWght;
 
   for(int32 x = 0; x < m_LoopEndX; x += m_WndStride)
   {
-    if(MskPtr[x])
+    auto [SSIM, Weight] = m_CalcPtrMsk(TstPtr + x, RefPtr + x, MskPtr + x, TstStride, RefStride, MskStride, m_WndSize, m_C1, m_C2, CalcL);
+
+    if(std::isfinite(SSIM) && Weight > 0.0)
     {
-      RowAccSSIM += m_CalcPtrMsk(TstPtr + x, RefPtr + x, MskPtr + x, TstStride, RefStride, MskStride, m_WndSize, m_C1, m_C2, CalcL);
+      RowAccSSIM += SSIM  ;
+      RowAccWght += Weight;
     }
   }
 
   flt64 RowSumSSIM = RowAccSSIM.result();
-  return RowSumSSIM;
+  flt64 RowSumWght = RowAccWght.result();
+  return { RowSumSSIM,RowSumWght };
 }
 void xSSIM::xVisPicSSIM(xPlane<uint16>* Vis, const xPicP* Tst, const xPicP* Ref, eCmp CmpId, bool UseMin)
 {
@@ -420,6 +462,51 @@ void xSSIM::xDownsamplePic(xPicP* Dst, const xPicP* Src)
   for(int32 CmpIdx = 0; CmpIdx < 3; CmpIdx++)
   {
     xPixelOps::DownsampleHV(Dst->getAddr((eCmp)CmpIdx), Src->getAddr((eCmp)CmpIdx), Dst->getStride(), Src->getStride(), Dst->getWidth(), Dst->getHeight());
+  }
+}
+void xSSIM::xDownsampleMsk(xPicP* DstMsk, const xPicP* SrcMsk)
+{
+  xPixelOps::DownsampleHV(DstMsk->getAddr(eCmp::C0), SrcMsk->getAddr(eCmp::C0), DstMsk->getStride(), SrcMsk->getStride(), DstMsk->getWidth(), DstMsk->getHeight());
+}
+void xSSIM::xDownsamplePicWght(xPicP* DstPic, const xPicP* SrcPic, const xPicP* SrcMsk)
+{
+  for(int32 CmpIdx = 0; CmpIdx < 3; CmpIdx++)
+  {
+    xDownsampleWeightedHV(DstPic->getAddr((eCmp)CmpIdx), SrcPic->getAddr((eCmp)CmpIdx), SrcMsk->getAddr(eCmp::C0), DstPic->getStride(), SrcPic->getStride(), SrcMsk->getStride(), DstPic->getWidth(), DstPic->getHeight());
+  }
+}
+void xSSIM::xDownsampleWeightedHV(uint16* restrict Dst, const uint16* Src, const uint16* Wgh, int32 DstStride, int32 SrcStride, int32 WghStride, int32 DstWidth, int32 DstHeight)
+{
+  const uint16* SrcL0 = Src;
+  const uint16* SrcL1 = Src + SrcStride;
+  const uint16* WghL0 = Wgh;
+  const uint16* WghL1 = Wgh + WghStride;
+
+  for(int32 y = 0; y < DstHeight; y++)
+  {
+    for(int32 x = 0; x < DstWidth; x++)
+    {
+      const int32 SrcX = x << 1;
+      int32 WghA = WghL0[SrcX    ];
+      int32 WghB = WghL0[SrcX + 1];
+      int32 WghC = WghL1[SrcX    ];
+      int32 WghD = WghL1[SrcX + 1];
+      int32 SrcA = SrcL0[SrcX    ];
+      int32 SrcB = SrcL0[SrcX + 1];
+      int32 SrcC = SrcL1[SrcX    ];
+      int32 SrcD = SrcL1[SrcX + 1];
+      
+      int32  SumWgh = WghA + WghB + WghC + WghD;
+      int32  SumSrc = SrcA*WghA + SrcB*WghB + SrcC*WghC + SrcD*WghD;
+      uint32 AvgSrc = xRoundF32ToU32((flt32)SumSrc / (flt32)SumWgh);
+
+      Dst[x] = (uint16)AvgSrc;
+    }
+    Dst += DstStride;
+    SrcL0 += (SrcStride << 1);
+    SrcL1 += (SrcStride << 1);
+    WghL0 += (WghStride << 1);
+    WghL1 += (WghStride << 1);
   }
 }
 

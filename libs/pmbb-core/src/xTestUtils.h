@@ -49,7 +49,7 @@ public:
   template<typename XXX> static bool isEqualValue(const XXX* Src, int32 SrcStride, int32 Width, int32 Height, XXX Value, bool Verbose = false);
 
   template<typename XXX> static bool isSameBuffer(const XXX* Ref,                  const XXX* Cmp,                  uint64 Area,                bool Verbose = false);
-  template<typename XXX> static bool isSameBufferFLT(const XXX* Ref, const XXX* Cmp, uint64 Area, bool Verbose = false);
+  template<typename XXX> static bool isSameBufferFLT(const XXX* Ref, const XXX* Cmp, uint64 Area, XXX Tolerance, bool Verbose = false);
   template<typename XXX> static bool isSameBuffer(const XXX* Ref, int32 RefStride, const XXX* Cmp, int32 CmpStride, int32 Width, int32 Height, bool Verbose = false);
 
   template<typename XXX> static bool isSimilarBuffer(const XXX* Ref,                  const XXX* Cmp,                  uint64 Area,                XXX Threshold, bool Verbose = false);
@@ -136,11 +136,11 @@ template<typename XXX> bool xTestUtils::isSameBuffer(const XXX* Ref, const XXX* 
   }
   return true;
 }
-template<typename XXX> bool xTestUtils::isSameBufferFLT(const XXX* Ref, const XXX* Cmp, uint64 Area, bool Verbose)
+template<typename XXX> bool xTestUtils::isSameBufferFLT(const XXX* Ref, const XXX* Cmp, uint64 Area, XXX Tolerance, bool Verbose)
 {
   for(uint64 i = 0; i < Area; i++)
   {
-    if(!xIsApproximatelyEqual(Ref[i], Cmp[i], (XXX)0.00001))
+    if(!xIsApproximatelyEqual(Ref[i], Cmp[i], Tolerance))
     {
       if(Verbose) { fmt::print("xTestUtils::isSameBufferFLT --> discrepancy found at i={} Ref={} Cmp={}\n", i, Ref[i], Cmp[i]); std::fflush(stdout); } return false;
     }

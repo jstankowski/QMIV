@@ -44,7 +44,7 @@ xSeqFile::tResult xSeqFile::closeFile()
 //===============================================================================================================================================================================================================
 xSeqCommon::tResult xSeqPic::readFrame(xPicP* Pic)
 {
-  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
+  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames + m_1stFrameIdx) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return { eRetv::Error, "OpMode does not allow Read"}; }
 
   //read frame
@@ -82,7 +82,7 @@ xSeqCommon::tResult xSeqPic::writeFrame(const xPicP* Pic)
 #if X_PMBB_SEQ_HAS_PLANE
 xSeqCommon::tResult xSeqPic::readFrame(xPlane<uint8>* Plane)
 {
-  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
+  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames + m_1stFrameIdx) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return { eRetv::Error, "OpMode does not allow Read" }; }
 
   //read frame
@@ -119,7 +119,7 @@ xSeqCommon::tResult xSeqPic::writeFrame(const xPlane<uint8>* Plane)
 }
 xSeqCommon::tResult xSeqPic::readFrame(xPlane<uint16>* Plane)
 {
-  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
+  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames + m_1stFrameIdx) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return { eRetv::Error, "OpMode does not allow Read" }; }
 
   //read frame
@@ -158,7 +158,7 @@ xSeqCommon::tResult xSeqPic::writeFrame(const xPlane<uint16>* Plane)
 #if X_PMBB_SEQ_HAS_PICYUV
 xSeqCommon::tResult xSeqPic::readFrame(xPicYUV* Pic)
 {
-  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
+  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames + m_1stFrameIdx) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return eRetv::Error; }
   if(!Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat)) { return eRetv::WrongArg; }
 
@@ -198,7 +198,8 @@ xSeqCommon::tResult xSeqPic::writeFrame(const xPicYUV* Pic)
 #endif //X_PMBB_SEQ_HAS_PICYUV
 xSeqCommon::tResult xSeqPic::seekFrame(int32 FrameNumber)
 {
-  if(m_OpMode == eMode::Read && FrameNumber >= m_NumOfFrames) { return eRetv::WrongArg; }
+  if(m_OpMode == eMode::Read && FrameNumber >= m_NumOfFrames + m_1stFrameIdx) { return eRetv::WrongArg; }
+  if(m_OpMode == eMode::Read && FrameNumber <                  m_1stFrameIdx) { return eRetv::WrongArg; }
   if(m_OpMode != eMode::Read) { return eRetv::Error; }
 
   //seek frame
@@ -213,7 +214,7 @@ xSeqCommon::tResult xSeqPic::seekFrame(int32 FrameNumber)
 xSeqCommon::tResult xSeqPic::skipFrame(int32 NumFrames)
 {
   int32 NewFrameNumber = m_CurrFrameIdx + NumFrames;
-  if(m_OpMode == eMode::Read && NewFrameNumber >= m_NumOfFrames) { return eRetv::WrongArg; }
+  if(m_OpMode == eMode::Read && NewFrameNumber >= m_NumOfFrames + m_1stFrameIdx) { return eRetv::WrongArg; }
   if(m_OpMode != eMode::Read) { return eRetv::Error; }
 
   //seek frame
@@ -579,6 +580,7 @@ xSeq::tResult xSeq::xBackendOpen(tCSR FileName, eMode OpMode)
   if(m_Stream->isValid())
   {
     int64 FileSize = m_Stream->size();
+    m_1stFrameIdx  = 0;
     m_NumOfFrames  = (int32)(FileSize / m_PackedImgNumBytes);
     m_CurrFrameIdx = 0;
   }

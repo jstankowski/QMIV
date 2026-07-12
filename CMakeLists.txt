@@ -48,6 +48,11 @@ else()
 endif()
 
 #broken features
+set(PMBB_ENABLE_STALLED FALSE CACHE BOOL "Enable stalled features")
+message(STATUS "PMBB_ENABLE_STALLED      = ${PMBB_ENABLE_STALLED}")
+set(PMBB_ENABLE_STALLED_VALUE $<BOOL:${PMBB_ENABLE_STALLED}>)
+
+#broken features
 set(PMBB_ENABLE_BROKEN FALSE CACHE BOOL "Enable broken features")
 message(STATUS "PMBB_ENABLE_BROKEN       = ${PMBB_ENABLE_BROKEN}")
 set(PMBB_ENABLE_BROKEN_VALUE $<BOOL:${PMBB_ENABLE_BROKEN}>)
@@ -79,8 +84,8 @@ if(PMBB_COMPILER_IS_MSVC)
   add_compile_options(/wd4324) 
   # force static runtime libraries for msvc builds 
   #set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  #add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-  #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+  add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif()
 
 #-----------------------------------------------------------------------------------------------------------------------------------------
@@ -237,7 +242,7 @@ if(PMBB_GENERATE_TESTING)
 endif()
 
 #=========================================================================================================================================
-# png read/write library SPNG ()
+# png read/write library
 #=========================================================================================================================================
 add_subdirectory(thirdparty/spng    thirdparty-spng)
 
@@ -248,10 +253,28 @@ add_subdirectory(libs/pmbb-base    libpmbb-base)
 add_subdirectory(libs/pmbb-core    libpmbb-core)
 add_subdirectory(libs/pmbb-ivqm    libpmbb-ivqm)
 add_subdirectory(libs/pmbb-slst    libpmbb-slst)
+add_subdirectory(libs/pmbb-fvgs    libpmbb-fvgs)
+add_subdirectory(libs/pmbb-hash    libpmbb-hash)
+add_subdirectory(libs/pmbb-gsr     libpmbb-gsr )
+add_subdirectory(libs/pmbb-qmau    libpmbb-qmau)
+add_subdirectory(libs/pmbb-gsau    libpmbb-gsau)
+
 #=========================================================================================================================================
 # apps
 #=========================================================================================================================================
-add_subdirectory(apps/QMIV QMIV)
+add_subdirectory(apps/QMIV       QMIV      )
+add_subdirectory(apps/QMIV-GS    QMIV-GS   )
+add_subdirectory(apps/QMIV-GSR   QMIV-GSR  )
+
+#=========================================================================================================================================
+# apps - QMIV-GS-Player
+#=========================================================================================================================================
+set(PMBB_BUILD_GS_PLAYER FALSE CACHE BOOL "Build QMIV-GS-Player (real-time viewer, fetches SDL3 and Dear ImGui)")
+message(STATUS "PMBB_BUILD_GS_PLAYER     = ${PMBB_BUILD_GS_PLAYER}")
+if(PMBB_BUILD_GS_PLAYER)
+  include(cmake/gsplayer.cmake)
+  add_subdirectory(apps/QMIV-GS-Player  QMIV-GS-Player )
+endif()
 
 #=========================================================================================================================================
 # debug

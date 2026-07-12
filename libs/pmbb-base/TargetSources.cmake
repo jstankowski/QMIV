@@ -1,7 +1,7 @@
 set(SRCLIST_COMMON_H src/xCommonDefBASE.h)
 
-set(SRCLIST_UTILS_H src/xErrMsg.h   src/xCfgINI.h   src/xFile.h   src/xMemory.h   src/xMemoryAlign.h src/xString.h   src/xLinuxSysfs.h  )
-set(SRCLIST_UTILS_C src/xErrMsg.cpp src/xCfgINI.cpp src/xFile.cpp src/xMemory.cpp                    src/xString.cpp src/xLinuxSysfs.cpp)
+set(SRCLIST_UTILS_H src/xMiscUtilsBASE.h   src/xErrMsg.h   src/xCfgINI.h   src/xFile.h   src/xMemory.h   src/xMemoryAlign.h src/xString.h   src/xLinuxSysfs.h  )
+set(SRCLIST_UTILS_C src/xMiscUtilsBASE.cpp src/xErrMsg.cpp src/xCfgINI.cpp src/xFile.cpp src/xMemory.cpp                    src/xString.cpp src/xLinuxSysfs.cpp)
 
 set(SRCLIST_PROC_H src/xProcInfo.h   src/xCoreInfo.h  )
 set(SRCLIST_PROC_C src/xProcInfo.cpp src/xCoreInfo.cpp)

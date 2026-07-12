@@ -13,6 +13,7 @@ namespace PMBB_NAMESPACE {
 //===============================================================================================================================================================================================================
 flt64 xStructSimAVX512::CalcRglrFlt(const uint16* Tst, const uint16* Ref, int32 StrideT, int32 StrideR, int32 /*WndSize*/, flt64 C1, flt64 C2, bool CalcL)
 {
+  //WARNING: This function is provided for reference only. The floating point accumulator makes it numericaly unstable.
   constexpr int32 c_BlockSize = xStructSimConsts::c_FilterSize;
 
   Tst -= (5 * StrideT + 5);

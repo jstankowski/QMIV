@@ -73,7 +73,12 @@ int main(int argc, char* argv[], char* envp[])
   CfgParser->setUnknownCmdParams(true);
   CfgParser->setEmptyCmdParams  (true);
   bool CommandlineResult = CfgParser->loadFromCmdln(argc, const_cast<const char**>(argv));
-  if(!CommandlineResult) { PMBB_BASE::xErrMsg::printError(std::string("! invalid commandline\n") + CfgParser->getParsingLog() + "\n\n", HelpString); return EXIT_FAILURE; }
+  if(!CommandlineResult)
+  {
+    PMBB_BASE::xErrMsg::printError(std::string("! invalid commandline\n") + CfgParser->getParsingLog() + "\n\n", HelpString);
+    fmt::print("Commandline args:\n"); PMBB_BASE::xCfgINI::printCommandlineArgs(argc, const_cast<const char**>(argv));
+    return EXIT_FAILURE;
+  }
 
   std::string LevelOverrideS = CfgParser->getParam1stArg("DispatchForce", PMBB_BASE::xProcInfo::xMflToStr(eMFL::UNDEFINED));
   eMFL        LevelOverride  = PMBB_BASE::xProcInfo::xStrToMfl(LevelOverrideS);

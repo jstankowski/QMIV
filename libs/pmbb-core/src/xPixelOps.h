@@ -70,13 +70,15 @@ public:
 
 public:  
   static inline tStr   FindOutOfRange (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth, int32 MsgNumLimit) { return xPixelOpsSTD::FindOutOfRange(Src, Stride, Width, Height, BitDepth, MsgNumLimit); }
-  static inline void   ClipToRange    (uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::ClipToRange   (Ptr, Stride, Width, Height, BitDepth); }
+  static inline void   ClipToRange    (uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { xPixelOpsSTD::ClipToRange   (Ptr, Stride, Width, Height, BitDepth); }
   static inline tStr   FindDiscrepancy(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 MsgNumLimit) { return xPixelOpsSTD::FindDiscrepancy(Tst, Ref, TstStride, RefStride, Width, Height, MsgNumLimit); }
-//static inline void   ExtendMargin   (uint16* Addr, int32 Stride, int32 Width, int32 Height, int32 Margin) { xPixelOpsSTD::ExtendMargin(Addr, Stride, Width, Height, Margin); }
   static inline uint64 CountEqual     (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
   static inline uint64 CountEqualMask (const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountEqualMask(Tst, Ref, Msk, TstStride, RefStride, MskStride, Width, Height); }
+  static inline void   Threshold      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, const uint16 Threshold, const uint16 MaxVal) { xPixelOpsSTD::Threshold(Dst, Src, DstStride, SrcStride, Width, Height, Threshold, MaxVal); }
+  static inline void   ShiftRound     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, int32 DstBitDepth, int32 SrcBitDepth) { xPixelOpsSTD::ShiftRound(Dst, Src, DstStride, SrcStride, Width, Height, DstBitDepth, SrcBitDepth); }
+  static inline void   Maximum        (uint16* Dst, const uint16* SrcA, const uint16* SrcB, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSTD::Maximum(Dst, SrcA, SrcB, DstStride, SrcStride, Width, Height); }
 
-#if   X_CAN_USE_AVX512
+#if X_CAN_USE_AVX512
   
   static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
   static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
