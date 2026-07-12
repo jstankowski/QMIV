@@ -34,7 +34,7 @@ The QMIV software (former IV-PSNR software) and its architecture is described in
 Credits - PUT students and graduates who contributed to this project:
 
 * Weronika Nowak (IV-SSIM co-development and prototyping)
-* Patrycja Kaźmierczak (NEON optimized implementation) 
+* Patrycja Kaźmierczak (ARM64 support & NEON optimized implementation) 
 
 ## 3. License
 
@@ -355,6 +355,9 @@ Examples:
 
 
 ## 6. Changelog
+
+### QMIV v4.0
+[TBD]  
 
 ### QMIV v3.0
 

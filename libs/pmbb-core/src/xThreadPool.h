@@ -181,17 +181,17 @@ public:
   xTaskBase* receiveTask (                              int8 ClientId) { return m_CompletedTasks.at(ClientId).removeWait(); }
   void       receiveTasks(xTaskBase** Tasks, int32 Num, int8 ClientId) { m_CompletedTasks.at(ClientId).removeWait(Tasks, Num); }
 
-  int32      getWaitingQueueCapacity  (             ) { return m_WaitingTasks.getSize(); }
-  int32      getWaitingQueueLoad      (             ) { return m_WaitingTasks.getLoad(); }
-  bool       isWaitingQueueEmpty      (             ) { return m_WaitingTasks.isEmpty(); }
-  bool       isWaitingQueueFull       (             ) { return m_WaitingTasks.isFull (); }
+  int32      getWaitingQueueCapacity  (             ) const { return m_WaitingTasks.getSize(); }
+  int32      getWaitingQueueLoad      (             ) const { return m_WaitingTasks.getLoad(); }
+  bool       isWaitingQueueEmpty      (             ) const { return m_WaitingTasks.isEmpty(); }
+  bool       isWaitingQueueFull       (             ) const { return m_WaitingTasks.isFull (); }
 
-  int32      getCompletedQueueCapacity(int8 ClientId) { return m_CompletedTasks.at(ClientId).getSize(); }
-  int32      getCompletedQueueLoad    (int8 ClientId) { return m_CompletedTasks.at(ClientId).getLoad(); }
-  bool       isCompletedQueueEmpty    (int8 ClientId) { return m_CompletedTasks.at(ClientId).isEmpty(); }
-  bool       isCompletedQueueFull     (int8 ClientId) { return m_CompletedTasks.at(ClientId).isFull (); }
+  int32      getCompletedQueueCapacity(int8 ClientId) const { return m_CompletedTasks.at(ClientId).getSize(); }
+  int32      getCompletedQueueLoad    (int8 ClientId) const { return m_CompletedTasks.at(ClientId).getLoad(); }
+  bool       isCompletedQueueEmpty    (int8 ClientId) const { return m_CompletedTasks.at(ClientId).isEmpty(); }
+  bool       isCompletedQueueFull     (int8 ClientId) const { return m_CompletedTasks.at(ClientId).isFull (); }
 
-  int32      getNumThreads            (             ) { return m_NumThreads; }
+  int32      getNumThreads            (             ) const { return m_NumThreads; }
 };
 
 //===============================================================================================================================================================================================================
@@ -252,23 +252,23 @@ public:
 
   virtual void init    (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks);
   virtual void uninit  ();
-  bool         isActive() { return m_ThreadPool != nullptr; }
+  bool         isActive() const { return m_ThreadPool != nullptr; }
 
-  void   setPriority  (int8  Priority ){ m_Priority = Priority; }
-  int8   getPriority  (               ){ return m_Priority; }
-  void   setNumChunks (int32 NumChunks){ m_NumChunks = NumChunks; }
-  int32  getNumChunks (               ){ return m_NumChunks; }
+  void   setPriority  (int8  Priority )       { m_Priority = Priority; }
+  int8   getPriority  (               ) const { return m_Priority; }
+  void   setNumChunks (int32 NumChunks)       { m_NumChunks = NumChunks; }
+  int32  getNumChunks (               ) const { return m_NumChunks; }
 
   void   submitTask (tTask* Task); // submit new waiting task
   tTask* receiveTask(           ); // receive completed task
 
-  int32  getWaitingQueueLoad  () { return m_ThreadPool->getWaitingQueueLoad(); }
-  bool   isWaitingQueueEmpty  () { return m_ThreadPool->isWaitingQueueEmpty(); }
-  bool   isWaitingQueueFull   () { return m_ThreadPool->isWaitingQueueFull (); }
-  int32  getCompletedQueueLoad() { return m_ThreadPool->getCompletedQueueLoad(m_ClientIdx); }
-  bool   isCompletedQueueEmpty() { return m_ThreadPool->isCompletedQueueEmpty(m_ClientIdx); }
-  bool   isCompletedQueueFull () { return m_ThreadPool->isCompletedQueueFull (m_ClientIdx); }
-  int32  getNumThreads        () { return m_ThreadPool != nullptr ? m_ThreadPool->getNumThreads() : 0; }
+  int32  getWaitingQueueLoad  () const { return m_ThreadPool->getWaitingQueueLoad(); }
+  bool   isWaitingQueueEmpty  () const { return m_ThreadPool->isWaitingQueueEmpty(); }
+  bool   isWaitingQueueFull   () const { return m_ThreadPool->isWaitingQueueFull (); }
+  int32  getCompletedQueueLoad() const { return m_ThreadPool->getCompletedQueueLoad(m_ClientIdx); }
+  bool   isCompletedQueueEmpty() const { return m_ThreadPool->isCompletedQueueEmpty(m_ClientIdx); }
+  bool   isCompletedQueueFull () const { return m_ThreadPool->isCompletedQueueFull (m_ClientIdx); }
+  int32  getNumThreads        () const { return m_ThreadPool != nullptr ? m_ThreadPool->getNumThreads() : 0; }
 
 };
 
@@ -292,6 +292,12 @@ public:
   void init  (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks) final;
   void uninit() final;
 
+  //utils
+  int32  getWaitingQueueCapacity  () const { return m_ThreadPool->getWaitingQueueCapacity  (           ); }
+  int32  getCompletedQueueCapacity() const { return m_ThreadPool->getCompletedQueueCapacity(m_ClientIdx); }
+  int32  getMaxNumTasksInBatch    () const { return xMin(getWaitingQueueCapacity(), getCompletedQueueCapacity());}
+
+  //per task interface
   void   addWaitingTask        (tFunct Function);
   void   waitUntilTasksFinished(int32 NumTasksToWaitFor);
 

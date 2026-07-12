@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski   <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski   <jakub.stankowski@put.poznan.pl>
     SPDX-FileCopyrightText: 2018-2019 Adrian Dziembowski <adrian.dziembowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
@@ -67,16 +67,8 @@ int32 xCorrespPixelShiftSTD::FindBestPixelWithinBlock(const int32V4& TstPel, con
       const int32 DistLm = xPow2(TstPel[0] - (int32)(RefPtrLm[Offset]));
       const int32 DistCb = xPow2(TstPel[1] - (int32)(RefPtrCb[Offset]));
       const int32 DistCr = xPow2(TstPel[2] - (int32)(RefPtrCr[Offset]));
-      if constexpr (xCorrespPixelShiftPrms::c_UseRuntimeCmpWeights)
-      {
-        const int32 Error = DistLm * CmpWeights[0] + DistCb * CmpWeights[1] + DistCr * CmpWeights[2];
-        if(Error < BestError) { BestError = Error; BestOffset = Offset; }
-      }
-      else
-      {
-        const int32 Error = (DistLm << 2) + DistCb + DistCr;
-        if (Error < BestError) { BestError = Error; BestOffset = Offset; }
-      }
+      const int32 Error = DistLm * CmpWeights[0] + DistCb * CmpWeights[1] + DistCr * CmpWeights[2];
+      if(Error < BestError) { BestError = Error; BestOffset = Offset; }
     } //x
   } //y
 
@@ -129,16 +121,8 @@ int32 xCorrespPixelShiftSTD::FindBestPixelWithinBlock(const int32V4& TstPel, con
       const int32   Offset = y * Stride + x;
       const int32V4 RefPel = (int32V4)(RefPtr[Offset]);
       const int32V4 Dist   = (TstPel - RefPel).getVecPow2();
-      if constexpr (c_UseRuntimeCmpWeights)
-      {
-        const int32 Error = (Dist * CmpWeights).getSum();
-        if (Error < BestError) { BestError = Error; BestOffset = Offset; }
-      }
-      else
-      {
-        const int32 Error = (Dist[0] << 2) + Dist[1] + Dist[2];
-        if (Error < BestError) { BestError = Error; BestOffset = Offset; }
-      }
+      const int32 Error = (Dist * CmpWeights).getSum();
+      if (Error < BestError) { BestError = Error; BestOffset = Offset; }
     } //x
   } //y
 
@@ -198,16 +182,8 @@ int32 xCorrespPixelShiftSTD::FindBestPixelWithinBlockM(const int32V4& TstPel, co
       if(MskPtr[Offset] == 0) { continue; }
       const int32V4 RefPel = (int32V4)(RefPtr[Offset]);
       const int32V4 Dist   = (TstPel - RefPel).getVecPow2();
-      if constexpr (c_UseRuntimeCmpWeights)
-      {
-        const int32 Error = (Dist * CmpWeights).getSum();
-        if (Error < BestError) { BestError = Error; BestOffset = Offset; }
-      }
-      else
-      {
-        const int32 Error = (Dist[0] << 2) + Dist[1] + Dist[2];
-        if (Error < BestError) { BestError = Error; BestOffset = Offset; }
-      }
+      const int32 Error = (Dist * CmpWeights).getSum();
+      if (Error < BestError) { BestError = Error; BestOffset = Offset; }
     } //x
   } //y
 

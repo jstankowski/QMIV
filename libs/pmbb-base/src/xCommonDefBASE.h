@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -42,6 +42,10 @@
 //===============================================================================================================================================================================================================
 #ifndef X_PMBB_EXPERIMENTAL
 #define X_PMBB_EXPERIMENTAL 0
+#endif
+
+#ifndef X_PMBB_STALLED
+#define X_PMBB_STALLED 0
 #endif
 
 #ifndef X_PMBB_BROKEN

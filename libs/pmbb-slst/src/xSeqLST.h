@@ -1,10 +1,11 @@
 /*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
 #include "xCommonDefSLST.h"
+#include "xFileListUtils.h"
 #include "xSeq.h"
 #include "xString.h"
 
@@ -12,11 +13,8 @@ namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
 
-class xSeqImgList : public xSeqPic
+class xSeqImgList : public xSeqPic, public xFileListUtils
 {
-public:
-  static constexpr int32 c_DefaultMaxNumFiles = std::numeric_limits<int32>::max() - 1;
-
 protected:
   std::string m_FileNamePattern;
   int32       m_MaxNumFiles = NOT_VALID;
@@ -43,14 +41,12 @@ protected:
   
 
 protected:
-  inline std::string xFormatFileName(int32 FrameIdx) const { return fmt::format(fmt::runtime(m_FileNamePattern), FrameIdx); }
+  inline std::string xFormatFileName(int32 FrameIdx) const { return formatFileName(m_FileNamePattern, FrameIdx); }
           tResult xImgListOpenRead  ();
           tResult xImgListOpenWrite ();
   virtual tResult xImgListFileVerify(tCSR FileName           ) = 0;
   virtual tResult xImgListFileRead  (      uint8* PackedFrame) = 0;
   virtual tResult xImgListFileWrite (const uint8* PackedFrame) = 0;
-
-
 };
 
 //===============================================================================================================================================================================================================

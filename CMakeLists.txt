@@ -48,6 +48,11 @@ else()
 endif()
 
 #broken features
+set(PMBB_ENABLE_STALLED FALSE CACHE BOOL "Enable stalled features")
+message(STATUS "PMBB_ENABLE_STALLED      = ${PMBB_ENABLE_STALLED}")
+set(PMBB_ENABLE_STALLED_VALUE $<BOOL:${PMBB_ENABLE_STALLED}>)
+
+#broken features
 set(PMBB_ENABLE_BROKEN FALSE CACHE BOOL "Enable broken features")
 message(STATUS "PMBB_ENABLE_BROKEN       = ${PMBB_ENABLE_BROKEN}")
 set(PMBB_ENABLE_BROKEN_VALUE $<BOOL:${PMBB_ENABLE_BROKEN}>)
@@ -79,8 +84,8 @@ if(PMBB_COMPILER_IS_MSVC)
   add_compile_options(/wd4324) 
   # force static runtime libraries for msvc builds 
   #set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  #add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-  #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+  add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif()
 
 #-----------------------------------------------------------------------------------------------------------------------------------------
@@ -248,10 +253,16 @@ add_subdirectory(libs/pmbb-base    libpmbb-base)
 add_subdirectory(libs/pmbb-core    libpmbb-core)
 add_subdirectory(libs/pmbb-ivqm    libpmbb-ivqm)
 add_subdirectory(libs/pmbb-slst    libpmbb-slst)
+add_subdirectory(libs/pmbb-ftv     libpmbb-ftv )
+add_subdirectory(libs/pmbb-gsc     libpmbb-gsc )
+add_subdirectory(libs/pmbb-gsr     libpmbb-gsr )
+add_subdirectory(libs/pmbb-qmau    libpmbb-qmau)
+
 #=========================================================================================================================================
 # apps
 #=========================================================================================================================================
-add_subdirectory(apps/QMIV QMIV)
+add_subdirectory(apps/QMIV       QMIV      )
+add_subdirectory(apps/QMIV-GS    QMIV-GS   )
 
 #=========================================================================================================================================
 # debug

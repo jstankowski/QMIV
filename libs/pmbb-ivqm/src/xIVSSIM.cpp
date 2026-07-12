@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -15,18 +15,42 @@ namespace PMBB_NAMESPACE {
 void xIVSSIM::create(int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS, bool PreAllocateSCP)
 {
   xSSIM::create(Size, BitDepth, Margin, EnableMS);
+#if X_PMBB_STALLED
+  if(PreAllocateSCP || EnableMS)
+#else
   if(PreAllocateSCP)
+#endif
   {
     m_TstSCP = new xPicP(Size, BitDepth, Margin);
     m_RefSCP = new xPicP(Size, BitDepth, Margin);
   }
 
+#if X_PMBB_STALLED
+  if(EnableMS)
+  {
+    int32V2 LastSize = m_PicSize;
+    for(int32 i = 1; i < m_NumScales; i++)
+    {
+      int32V2 NewSize = LastSize >> 1;
+      m_PicSCPDownsampledTst[i] = new xPicP(NewSize, BitDepth, Margin);
+      m_PicSCPDownsampledRef[i] = new xPicP(NewSize, BitDepth, Margin);
+      LastSize = NewSize;
+    }
+  }
+#endif //X_PMBB_STALLED
 }
 void xIVSSIM::destroy()
 {
   if(m_TstSCP != nullptr) { m_TstSCP->destroy(); delete m_TstSCP; m_TstSCP = nullptr; }
   if(m_RefSCP != nullptr) { m_RefSCP->destroy(); delete m_RefSCP; m_RefSCP = nullptr; }
   xSSIM::destroy();
+#if X_PMBB_STALLED
+  for(int32 i = 1; i < c_NumMultiScales; i++)
+  {
+    if(m_PicSCPDownsampledTst[i]) { m_PicSCPDownsampledTst[i]->destroy(); delete m_PicSCPDownsampledTst[i]; m_PicSCPDownsampledTst[i] = nullptr; }
+    if(m_PicSCPDownsampledRef[i]) { m_PicSCPDownsampledRef[i]->destroy(); delete m_PicSCPDownsampledRef[i]; m_PicSCPDownsampledRef[i] = nullptr; }
+  }
+#endif //X_PMBB_STALLED
 }
 flt64 xIVSSIM::calcPicIVSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP)
 {
@@ -112,6 +136,68 @@ flt64 xIVSSIM::calcPicIVSSIMM(const xPicP* Tst, const xPicP* Ref, const xPicP* T
   
   return IVSSIM;
 }
+#if X_PMBB_STALLED
+flt64 xIVSSIM::calcPicMSIVSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP)
+{
+  assert(Tst != nullptr && Ref != nullptr && Ref->isCompatible(Tst));
+  assert((TstSCP == nullptr && RefSCP == nullptr) || (TstSCP != nullptr && RefSCP != nullptr && TstSCP->isCompatible(Ref) && RefSCP->isCompatible(Tst)));
+
+  if(TstSCP == nullptr && RefSCP == nullptr)
+  {
+    if(m_TstSCP != nullptr) { m_TstSCP = new xPicP(); m_TstSCP->create(Tst); }
+    if(m_RefSCP != nullptr) { m_RefSCP = new xPicP(); m_RefSCP->create(Tst); }
+    assert(m_RefSCP->isCompatible(Ref) && m_TstSCP->isCompatible(Tst));
+    int32V4 GlobalColorDiffRef2Tst = xGlobClrDiff::CalcGlobalColorDiff(Ref, Tst, m_CmpUnntcbCoef, m_ThPI);
+    if(m_DebugCallbackGCS) { m_DebugCallbackGCS(GlobalColorDiffRef2Tst); }
+    xShftCompPic::GenShftCompPics(m_RefSCP, m_TstSCP, Ref, Tst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
+  }
+
+  std::array<flt64V4, c_NumMultiScales> SubScoresT2R; SubScoresT2R.fill(xMakeVec4<flt64>(0));
+  std::array<flt64V4, c_NumMultiScales> SubScoresR2T; SubScoresR2T.fill(xMakeVec4<flt64>(0));
+
+  SubScoresT2R[0] = xCalcPicSSIM(Tst, RefSCP, m_UseWS, m_NumScales == 1);
+  SubScoresR2T[0] = xCalcPicSSIM(Ref, TstSCP, m_UseWS, m_NumScales == 1);
+  for (int32 i = 1; i < m_NumScales; i++)
+  {
+    if (i == 1) { xDownsamplePic(m_SubPicTst[i], Tst               ); xDownsamplePic(m_SubPicRef[i], Ref               ); }
+    else        { xDownsamplePic(m_SubPicTst[i], m_SubPicTst[i - 1]); xDownsamplePic(m_SubPicRef[i], m_SubPicRef[i - 1]); }
+
+    int32V4 GlobalColorDiffRef2Tst = xGlobClrDiff::CalcGlobalColorDiff(m_SubPicRef[i], m_SubPicTst[i], m_CmpUnntcbCoef, m_ThPI);
+    xShftCompPic::GenShftCompPics(m_PicSCPDownsampledRef[i], m_PicSCPDownsampledTst[i], m_SubPicRef[i], m_SubPicTst[i], GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
+
+    SubScoresT2R[i] = xCalcPicSSIM(m_SubPicTst[i], m_PicSCPDownsampledRef[i], m_UseWS, i == m_NumScales - 1);
+    SubScoresR2T[i] = xCalcPicSSIM(m_SubPicRef[i], m_PicSCPDownsampledTst[i], m_UseWS, i == m_NumScales - 1);
+  }
+
+  const std::array<flt64, c_NumMultiScales> MultiScaleExponentWeights = c_MultiScaleExponentWeights<flt64>[m_NumScales - 1];
+  //T2R
+  //hint: sometimes SubScore can be negative, so do the same as pytorch - use ReLU to avoid (-0.sth)^Scale
+  std::array<flt64V4, c_NumMultiScales> m_CorrectedSubScoresT2R;
+  for (int32 i = 0; i < c_NumMultiScales; i++) { m_CorrectedSubScoresT2R[i] = SubScoresT2R[i].getVecReLU(); }
+  flt64V4 CompoundScoreT2R = xMakeVec4<flt64>(1);
+  for (int32 i = 0; i < m_NumScales; i++) { CompoundScoreT2R *= m_CorrectedSubScoresT2R[i].getVecPow1(MultiScaleExponentWeights[i]); }
+
+  //R2T
+  std::array<flt64V4, c_NumMultiScales> m_CorrectedSubScoresR2T;
+  for (int32 i = 0; i < c_NumMultiScales; i++) { m_CorrectedSubScoresR2T[i] = SubScoresR2T[i].getVecReLU(); }
+  flt64V4 CompoundScoreR2T = xMakeVec4<flt64>(1);
+  for (int32 i = 0; i < m_NumScales; i++) { CompoundScoreR2T *= m_CorrectedSubScoresR2T[i].getVecPow1(MultiScaleExponentWeights[i]); }
+
+  flt64V4 MSIVSSIMs_T2R = CompoundScoreT2R;
+  flt64V4 MSIVSSIMs_R2T = CompoundScoreR2T;
+
+  const int32V4 CmpWeightsAverage = m_CmpWeightsAverage;
+  const int32   SumCmpWeight = CmpWeightsAverage.getSum();
+  const flt64   ComponentWeightInvDenominator = 1.0 / (flt64)SumCmpWeight;
+
+  flt64 MSIVSSIM_T2R = (MSIVSSIMs_T2R * (flt64V4)CmpWeightsAverage).getSum() * ComponentWeightInvDenominator;
+  flt64 MSIVSSIM_R2T = (MSIVSSIMs_R2T * (flt64V4)CmpWeightsAverage).getSum() * ComponentWeightInvDenominator;
+
+  flt64 MSIVSSIM = xMin(MSIVSSIM_T2R, MSIVSSIM_R2T);
+  return MSIVSSIM;
+}
+#endif //X_PMBB_STALLED
+
 void xIVSSIM::visualizeIVSSIM(xPlane<uint16>* Vis, const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, eCmp CmpId)
 {
   assert(Tst != nullptr && Ref != nullptr && Ref->isCompatible(Tst) && TstSCP != nullptr && TstSCP->isCompatible(Ref) && RefSCP != nullptr && RefSCP->isCompatible(Tst));

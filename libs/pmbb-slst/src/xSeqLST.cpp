@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -61,7 +61,10 @@ xSeqCommon::tResult xSeqImgList::xBackendOpen(tCSR FileNamePattern, eMode OpMode
 {
   m_FileNamePattern = FileNamePattern;
 
-  m_SingleFile = (xFormatFileName(0) == FileNamePattern); //file name pattern does not contain any format field
+  eFmtSts FormatStatus = analyzeFormatString(FileNamePattern);
+  if(FormatStatus == eFmtSts::Malformed) { return { eRetv::WrongArg, fmt::format("Malformed format string FileNamePattern={}",FileNamePattern) }; }
+
+  m_SingleFile = FormatStatus==eFmtSts::NonFmt; //file name pattern does not contain any format field
 
   switch(OpMode)
   {
@@ -158,25 +161,25 @@ xSeqCommon::tResult xSeqPNG::xImgListFileVerify(tCSR FileName)
 
   //open file
   FILE* File = fopen(FileName.c_str(), "rb");
-  if(File == nullptr) { return eRetv::Error; }
+  if(File == nullptr) { return eRetv::InexistentFile; }
 
   int32 Res = spng_set_png_file(Ctx, File);
-  if(Res) { return { eRetv::Error, fmt::format("spng_set_png_file Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_set_png_file Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
   
   Res = spng_decode_chunks(Ctx);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decode_chunks Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decode_chunks Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
 
   size_t ExpectedSizeOrg = 0;
   Res = spng_decoded_image_size(Ctx, SPNG_FMT_PNG, &ExpectedSizeOrg);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
 
   size_t ExpectedSizeRGB8 = 0;
   Res = spng_decoded_image_size(Ctx, SPNG_FMT_RGB8, &ExpectedSizeRGB8);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
 
   spng_ihdr IHDR;
   Res = spng_get_ihdr(Ctx, &IHDR);
-  if(Res) { return { eRetv::Error, fmt::format("spng_get_ihdr Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_get_ihdr Ret={} RetS={} File={}", Res, spng_strerror(Res), FileName) }; }
 
   if(m_Size.getX() != (int32)IHDR.width    ) { return { eRetv::Error, "Width does not match"   }; }
   if(m_Size.getY() != (int32)IHDR.height   ) { return { eRetv::Error, "Height does not match"  }; }
@@ -194,17 +197,17 @@ xSeqCommon::tResult xSeqPNG::xImgListFileRead(uint8* PackedFrame)
 
   //open file
   FILE* File = fopen(FrameFileName.c_str(), "rb");
-  if(File == nullptr) { return eRetv::Error; }
+  if(File == nullptr) { return eRetv::InexistentFile; }
 
   int32 Res = spng_set_png_file(Ctx, File);
-  if(Res) { return { eRetv::Error, fmt::format("spng_set_png_file Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_set_png_file Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
   
   Res = spng_decode_chunks(Ctx);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decode_chunks Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decode_chunks Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
 
   spng_ihdr IHDR;
   Res = spng_get_ihdr(Ctx, &IHDR);
-  if(Res) { return { eRetv::Error, fmt::format("spng_get_ihdr Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_get_ihdr Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
 
   if(m_Size.getX() != (int32)IHDR.width    ) { return { eRetv::Error, "Width does not match"   }; }
   if(m_Size.getY() != (int32)IHDR.height   ) { return { eRetv::Error, "Height does not match"  }; }
@@ -212,15 +215,15 @@ xSeqCommon::tResult xSeqPNG::xImgListFileRead(uint8* PackedFrame)
 
   size_t ExpectedSizeOrg = 0;
   Res = spng_decoded_image_size(Ctx, SPNG_FMT_PNG, &ExpectedSizeOrg);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
 
   size_t ExpectedSizeRGB8  = 0;
   Res = spng_decoded_image_size(Ctx, SPNG_FMT_RGB8, &ExpectedSizeRGB8);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decoded_image_size Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
   if((int32)ExpectedSizeRGB8 != m_TmpBuffSize) { return { eRetv::Error, fmt::format("Returned spng_decoded_image_size does not match buffer size Len={} Size={} File={}", ExpectedSizeRGB8, m_TmpBuffSize, FrameFileName) }; }
 
   Res = spng_decode_image(Ctx, m_TmpBuffPtr, m_TmpBuffSize, SPNG_FMT_RGB8, 0);
-  if(Res) { return { eRetv::Error, fmt::format("spng_decode_image Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
+  if(Res) { return { eRetv::CorruptedFile, fmt::format("spng_decode_image Ret={} RetS={} File={}", Res, spng_strerror(Res), FrameFileName) }; }
   fclose(File);
 
   uint8* DstPtrR = PackedFrame;
@@ -308,20 +311,20 @@ xSeqCommon::tResult xSeqBMP::xImgListFileVerify(tCSR FileName)
 {
   //Open file
   xStream File(FileName, xStream::eMode::Read);
-  if(!File.isValid()) { return eRetv::Error; }
+  if(!File.isValid()) { return eRetv::InexistentFile; }
 
   //Read headers
   xBitmapFileHeader BFH;
   bool ResultBFH = BFH.Read(&File);
-  if(!ResultBFH) { return { eRetv::Error, "xBitmapFileHeader read failure" }; }
-  if(BFH.getType() != 0x4d42 || BFH.getOffset() < xBitmapFileHeader::c_HeaderLength + xBitmapInfoHeader::c_HeaderLength) { return { eRetv::Error, "BitmapFileHeader content is invalid" }; }
+  if(!ResultBFH) { return { eRetv::CorruptedFile, "xBitmapFileHeader read failure" }; }
+  if(BFH.getType() != 0x4d42 || BFH.getOffset() < xBitmapFileHeader::c_HeaderLength + xBitmapInfoHeader::c_HeaderLength) { return { eRetv::CorruptedFile, "BitmapFileHeader content is invalid" }; }
 
   xBitmapInfoHeader BIH;
   bool ResultBIH = BIH.Read(&File);
-  if(!ResultBIH) { return { eRetv::Error, "BitmapInfoHeader read failure (number of color planes != 0)" }; }
-  if(BIH.getPlanes      () != 1) { return { eRetv::Error, "BitmapInfoHeader content is invalid" }; }
-  if(BIH.getBitsPerPixel() != 24 && BIH.getBitsPerPixel() != 32) { return { eRetv::Error, "Only 24 or 32 bit (non-palette) is suported" }; }
-  if(BIH.getCompression () != 0) { return { eRetv::Error, "Only BI_RGB compression method is supported" }; }
+  if(!ResultBIH) { return { eRetv::CorruptedFile, "BitmapInfoHeader read failure (number of color planes != 0)" }; }
+  if(BIH.getPlanes      () != 1) { return { eRetv::CorruptedFile, "BitmapInfoHeader content is invalid" }; }
+  if(BIH.getBitsPerPixel() != 24 && BIH.getBitsPerPixel() != 32) { return { eRetv::NotImplemented, "Only 24 or 32 bit (non-palette) is suported" }; }
+  if(BIH.getCompression () != 0) { return { eRetv::NotImplemented, "Only BI_RGB compression method is supported" }; }
 
   File.closeFile();
 
@@ -340,20 +343,20 @@ xSeqCommon::tResult xSeqBMP::xImgListFileRead(uint8* PackedFrame)
 
   //Open file
   xStream File(FrameFileName, xStream::eMode::Read);
-  if(!File.isValid()) { return eRetv::Error; }
+  if(!File.isValid()) { return eRetv::InexistentFile; }
 
   //Read headers
   xBitmapFileHeader BFH;
   bool ResultBFH = BFH.Read(&File);
-  if(!ResultBFH) { return { eRetv::Error, "xBitmapFileHeader read failure" }; }
-  if(BFH.getType() != 0x4d42 || BFH.getOffset() < xBitmapFileHeader::c_HeaderLength + xBitmapInfoHeader::c_HeaderLength) { return { eRetv::Error, "BitmapFileHeader content is invalid" }; }
+  if(!ResultBFH) { return { eRetv::CorruptedFile, "xBitmapFileHeader read failure" }; }
+  if(BFH.getType() != 0x4d42 || BFH.getOffset() < xBitmapFileHeader::c_HeaderLength + xBitmapInfoHeader::c_HeaderLength) { return { eRetv::CorruptedFile, "BitmapFileHeader content is invalid" }; }
 
   xBitmapInfoHeader BIH;
   bool ResultBIH = BIH.Read(&File);
-  if(!ResultBIH) { return { eRetv::Error, "BitmapInfoHeader read failure" }; }
-  if(BIH.getPlanes() != 1) { return { eRetv::Error, "BitmapInfoHeader content is invalid (number of color planes != 0)" }; }
-  if(BIH.getBitsPerPixel() != 24 && BIH.getBitsPerPixel() != 32) { return { eRetv::Error, "Only 24 or 32 bit (non-palette) is suported" }; }
-  if(BIH.getCompression() != 0) { return { eRetv::Error, "Only BI_RGB compression method is supported" }; }
+  if(!ResultBIH) { return { eRetv::CorruptedFile, "BitmapInfoHeader read failure" }; }
+  if(BIH.getPlanes() != 1) { return { eRetv::CorruptedFile, "BitmapInfoHeader content is invalid (number of color planes != 0)" }; }
+  if(BIH.getBitsPerPixel() != 24 && BIH.getBitsPerPixel() != 32) { return { eRetv::NotImplemented, "Only 24 or 32 bit (non-palette) is suported" }; }
+  if(BIH.getCompression() != 0) { return { eRetv::NotImplemented, "Only BI_RGB compression method is supported" }; }
 
   int32 W    = BIH.getWidth ();
   int32 H    = BIH.getHeight();

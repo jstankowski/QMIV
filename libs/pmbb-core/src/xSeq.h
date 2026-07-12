@@ -2,10 +2,9 @@
     SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
-
 #pragma once
-
 #include "xCommonDefCORE.h"
+#include "xInOutResult.h"
 #include "xStream.h"
 #include "xPic.h"
 
@@ -30,46 +29,10 @@ namespace PMBB_NAMESPACE {
 class xSeqFile
 {
 public:
-  using tCSR = const std::string&;
+  using tCSR    = const std::string&;
+  using tResult = xInOutResult;
 
   enum class eMode : int32 { Unknown, Read, Write, Append };
-  enum class [[nodiscard]] eRetv : int32 { Success, EndOfFile, Error, WrongArg, NotImplemented };
-
-  static std::string_view RetvToStr(eRetv Result)
-  {
-    switch(Result)
-    {
-      case eRetv::Success       : return "Success"        ; break;
-      case eRetv::EndOfFile     : return "EndOfFile"      ; break;
-      case eRetv::Error         : return "Error"          ; break;
-      case eRetv::WrongArg      : return "WrongArg"       ; break;
-      case eRetv::NotImplemented: return "NotImplemented" ; break;
-      default:                    return "Unknown"        ; break;
-    }
-  }
-
-  class tResult
-  {
-  protected:
-    eRetv       m_Result;
-    std::string m_Message;
-
-  public:
-    tResult(eRetv Result, const std::string Message = std::string()) : m_Result(Result), m_Message(Message) {}
-
-    explicit operator bool       () const { return m_Result == eRetv::Success; }
-    explicit operator std::string() const { return format(); }
-
-    std::string format() const
-    {
-      std::string Msg = fmt::format("xSeqErrorType=<<{}>> ", RetvToStr(m_Result));
-      if(!m_Message.empty()) { Msg += fmt::format("Message=<<{}>> ", m_Message); }
-      return Msg;
-    }
-
-    inline bool operator== (const eRetv Res) const { return m_Result == Res; }
-    inline bool operator!= (const eRetv Res) const { return m_Result != Res; }
-  };
 
 protected:
   eMode m_OpMode          = eMode::Unknown;

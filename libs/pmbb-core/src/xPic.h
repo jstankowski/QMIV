@@ -4,7 +4,6 @@
 */
 
 #pragma once
-
 #include "xCommonDefCORE.h"
 #include "xPicCommon.h"
 #include "xVec.h"

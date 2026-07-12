@@ -32,12 +32,20 @@ protected:
   xPicP* m_TstSCP = nullptr; 
   xPicP* m_RefSCP = nullptr;
 
+#if X_PMBB_STALLED
+  xPicP* m_PicSCPDownsampledTst[c_NumMultiScales] = { nullptr };
+  xPicP* m_PicSCPDownsampledRef[c_NumMultiScales] = { nullptr };
+#endif //X_PMBB_STALLED
+
 public:
   virtual void create (int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS, bool PreAllocateSCP = false);
   virtual void destroy();
 
   flt64 calcPicIVSSIM  (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP = nullptr, const xPicP* RefSCP = nullptr);
   flt64 calcPicIVMSSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP = nullptr, const xPicP* RefSCP = nullptr);
+#if X_PMBB_STALLED
+  flt64 calcPicMSIVSSIM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP = nullptr, const xPicP* RefSCP = nullptr);
+#endif //X_PMBB_STALLED
 
   //mask mode
   flt64 calcPicIVSSIMM (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, const xPicP* Msk, int32 NumNonMasked = NOT_VALID);

@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2024 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-FileCopyrightText: If you use this software, please cite the following paper: A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR—The Objective Quality Metric for Immersive Video Applications," in IEEE Transactions on Circuits and Systems for Video Technology, vol. 32, no. 11, pp. 7575-7591, Nov. 2022, doi: 10.1109/TCSVT.2022.3179575.
     SPDX-License-Identifier: BSD-3-Clause
 */
@@ -7,26 +7,10 @@
 //===============================================================================================================================================================================================================
 
 #include "xAppQMIV.h"
-
-#include "xFile.h"
-#include "xSeq.h"
-#include "xIVPSNR.h"
-#include "xSSIM.h"
-#include "xCfgINI.h"
 #include "xErrMsg.h"
-#include "xFmtScn.h"
-#include "xMemory.h"
+#include "xMiscUtilsBASE.h"
 #include "xMiscUtilsCORE.h"
-#include "xKBNS.h"
-#include <math.h>
 #include <fstream>
-#include <time.h>
-#include <limits>
-#include <numeric>
-#include <cassert>
-#include <thread>
-#include <filesystem>
-#include "fmt/chrono.h"
 
 using namespace PMBB_NAMESPACE;
 
@@ -50,9 +34,9 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //parsing configuration
   AppQMIV.registerCmdParams();
   bool CfgLoadResult = AppQMIV.loadConfiguration(argc, const_cast<const char**>(argv));
-  if(!CfgLoadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
+  if(!CfgLoadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", AppQMIV.formatHelp()); return EXIT_FAILURE; }
   bool CfgReadResult = AppQMIV.readConfiguration();
-  if(!CfgReadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
+  if(!CfgReadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", AppQMIV.formatHelp()); return EXIT_FAILURE; }
   const int32 VerboseLevel = AppQMIV.getVerboseLevel();
 
   if(VerboseLevel >= 2)
@@ -64,14 +48,14 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //print compile time setup
   if (VerboseLevel >= 1)
   {
+    fmt::print("{}", xMiscUtilsBASE::formatCompileTimeSetup());
     fmt::print("{}", xMiscUtilsCORE::formatCompileTimeSetup());
-    fmt::print("USE_RUNTIME_CMPWEIGHTS = {}\n", xc_USE_RUNTIME_CMPWEIGHTS);
     fmt::print("\n");
   }
 
   if(VerboseLevel >= 2)
   {
-    fmt::print("{}\n", xMiscUtilsCORE::formatBuildInfo());
+    fmt::print("{}\n", xMiscUtilsBASE::formatBuildInfo());
   }
 
   //print config
@@ -99,10 +83,11 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //===================================================================================================================
   if(VerboseLevel >= 2) { fmt::print("Initializing:\n"); }
 
-  eAppRes SeqRes = AppQMIV.setupSeqAndBuffs();
-  if(SeqRes == eAppRes::Error) { return EXIT_FAILURE; }
+  eAppRes SeqRes = AppQMIV.setupSeqs (); if(SeqRes == eAppRes::Error) { return EXIT_FAILURE; }
+  eAppRes BufRes = AppQMIV.setupBuffs(); if(BufRes == eAppRes::Error) { return EXIT_FAILURE; }
 
-  AppQMIV.createProcessors();
+  AppQMIV.createMetricProcessors();
+  AppQMIV.initMetricStorage     ();
 
   //===================================================================================================================
   //running
@@ -117,14 +102,16 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //===================================================================================================================
   if(VerboseLevel >= 1) { fmt::print("\n"); fmt::print("{}", AppQMIV.calibrateTimeStamp()); }
   fmt::print("\n\n");
-  AppQMIV.combineFrameStats  ();
-  AppQMIV.ceaseSeqAndBuffs   ();
-  AppQMIV.ceaseMultithreading();
+  AppQMIV.combineFrameStats      ();
+  AppQMIV.ceaseSeqs              ();
+  AppQMIV.ceaseBuffs             ();
+  AppQMIV.ceaseMultithreading    ();
+  AppQMIV.destroyMetricProcessors();
 
   //output file
-  if(!AppQMIV.m_ResultFile.empty())
+  if(!AppQMIV.getResultFile().empty())
   {
-    std::ofstream ResultStream(AppQMIV.m_ResultFile, std::ios::app);
+    std::ofstream ResultStream(AppQMIV.getResultFile(), std::ios::app);
     ResultStream << AppQMIV.formatResultsFile();
     ResultStream.close();
   }

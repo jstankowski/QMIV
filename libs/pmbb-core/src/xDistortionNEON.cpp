@@ -309,6 +309,80 @@ uint64 xDistortionNEON::CalcSSD16(const uint16* restrict Tst, const uint16* rest
     return SSD;
   }
 }
+tSDSSD xDistortionNEON::CalcSSS14(const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  int32x4_t  SD_I32V  = vdupq_n_s32(0);
+  uint64x2_t SSD_U64V = vdupq_n_u64(0);
+  if(((uint32)Width & c_RemainderMask16<uint32>)==0) 
+  {
+    for(int32 y=0; y<Height; y++)
+    {
+      for(int32 x=0; x<Width; x+=16)
+      {
+        uint16x8_t TstA_U16V  = vld1q_u16(Tst + x    );
+        uint16x8_t RefA_U16V  = vld1q_u16(Ref + x    );
+        uint16x8_t TstB_U16V  = vld1q_u16(Tst + x + 8);
+        uint16x8_t RefB_U16V  = vld1q_u16(Ref + x + 8);
+        int16x8_t  DiffA_I16V = vsubq_s16(vreinterpretq_s16_u16(TstA_U16V), vreinterpretq_s16_u16(RefA_U16V));
+        int16x8_t  DiffB_I16V = vsubq_s16(vreinterpretq_s16_u16(TstB_U16V), vreinterpretq_s16_u16(RefB_U16V));
+        int32x4_t  Diff1_I32V = vaddl_s16     (vget_low_s16(DiffA_I16V), vget_low_s16(DiffB_I16V));
+        int32x4_t  Diff2_I32V = vaddl_high_s16(             DiffA_I16V ,              DiffB_I16V );
+        int32x4_t  Diff_I32_V = vaddq_s32(Diff1_I32V, Diff2_I32V);
+        SD_I32V               = vaddq_s32(SD_I32V, Diff_I32_V);
+        int32x4_t  PowA_I32V  = vmlal_high_s16(vmull_s16(vget_low_s16(DiffA_I16V), vget_low_s16(DiffA_I16V)), DiffA_I16V, DiffA_I16V);
+        int32x4_t  PowB_I32V  = vmlal_high_s16(vmull_s16(vget_low_s16(DiffB_I16V), vget_low_s16(DiffB_I16V)), DiffB_I16V, DiffB_I16V);
+        int64x2_t  Pow1_I64   = vaddl_s32     (vget_low_s32(PowA_I32V), vget_low_s32(PowB_I32V));
+        int64x2_t  Pow2_I64   = vaddl_high_s32(             PowA_I32V ,              PowB_I32V );
+        int64x2_t  Pow_I64V   = vaddq_s64(Pow1_I64, Pow2_I64);
+        SSD_U64V = vaddq_u64(SSD_U64V, vreinterpretq_u64_s64(Pow_I64V)); 
+      }//x
+      Tst += TstStride;
+      Ref += RefStride;
+    }//y
+    int64  SD  = vaddvq_s32(SD_I32V);
+    uint64 SSD = vaddvq_u64(SSD_U64V);
+    return { SD, SSD };
+  }
+  else
+  {
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    int64  SD  = 0;
+    uint64 SSD = 0;
+    for(int32 y=0; y<Height; y++)
+    {
+      for(int32 x=0; x<Width16; x+=16)
+      {
+        uint16x8_t TstA_U16V  = vld1q_u16(Tst + x    );
+        uint16x8_t RefA_U16V  = vld1q_u16(Ref + x    );
+        uint16x8_t TstB_U16V  = vld1q_u16(Tst + x + 8);
+        uint16x8_t RefB_U16V  = vld1q_u16(Ref + x + 8);
+        int16x8_t  DiffA_I16V = vsubq_s16(vreinterpretq_s16_u16(TstA_U16V), vreinterpretq_s16_u16(RefA_U16V));
+        int16x8_t  DiffB_I16V = vsubq_s16(vreinterpretq_s16_u16(TstB_U16V), vreinterpretq_s16_u16(RefB_U16V));
+        int32x4_t  Diff1_I32V = vaddl_s16     (vget_low_s16(DiffA_I16V), vget_low_s16(DiffB_I16V));
+        int32x4_t  Diff2_I32V = vaddl_high_s16(             DiffA_I16V ,              DiffB_I16V );
+        int32x4_t  Diff_I32_V = vaddq_s32(Diff1_I32V, Diff2_I32V);
+        SD_I32V               = vaddq_s32(SD_I32V, Diff_I32_V);
+        int32x4_t  PowA_I32V  = vmlal_high_s16(vmull_s16(vget_low_s16(DiffA_I16V), vget_low_s16(DiffA_I16V)), DiffA_I16V, DiffA_I16V);
+        int32x4_t  PowB_I32V  = vmlal_high_s16(vmull_s16(vget_low_s16(DiffB_I16V), vget_low_s16(DiffB_I16V)), DiffB_I16V, DiffB_I16V);
+        int64x2_t  Pow1_I64   = vaddl_s32     (vget_low_s32(PowA_I32V), vget_low_s32(PowB_I32V));
+        int64x2_t  Pow2_I64   = vaddl_high_s32(             PowA_I32V ,              PowB_I32V );
+        int64x2_t  Pow_I64V   = vaddq_s64(Pow1_I64, Pow2_I64);
+        SSD_U64V = vaddq_u64(SSD_U64V, vreinterpretq_u64_s64(Pow_I64V)); 
+      }
+      for(int32 x=Width16; x<Width; x++)
+      {
+        int32 Diff = (int32)Tst[x] - (int32)Ref[x];
+        SD  += Diff;
+        SSD += xPow2(Diff);
+      }//x
+      Tst += TstStride;
+      Ref += RefStride;
+    }//y
+    SD  += vaddvq_s32(SD_I32V );
+    SSD += vaddvq_u64(SSD_U64V);
+    return { SD, SSD };
+  }
+}
 
 //===============================================================================================================================================================================================================
 

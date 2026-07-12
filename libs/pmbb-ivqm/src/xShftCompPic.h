@@ -8,6 +8,7 @@
 #include "xCommonDefIVQM.h"
 #include "xCorrespPixelShift.h"
 #include "xCorrespPixelShiftPrms.h"
+#include "xMultiThreaded.h"
 
 namespace PMBB_NAMESPACE {
 
